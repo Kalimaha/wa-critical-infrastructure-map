@@ -1,0 +1,22 @@
+[project]
+name = "wa-critical-infrastructure-map"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { email = "guido.barbaglia@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "duckdb>=1.5.5",
+    "geopandas>=1.1.4",
+    "h3>=4.5.0",
+    "pyarrow>=25.0.1",
+]
+
+[project.scripts]
+wa-critical-infrastructure-map = "wa_critical_infrastructure_map:main"
+
+[build-system]
+requires = ["uv_build>=0.12.18,<0.13.0"]
+build-backend = "uv_build"

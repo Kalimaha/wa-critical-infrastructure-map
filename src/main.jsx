@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import * as maplibregl from 'maplibre-gl';
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import * as pmtiles from 'pmtiles';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
@@ -10,6 +11,7 @@ import './style.css';
 
 const PMTILES_URL = 'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/Road_network.pmtiles';
 const protocol = new pmtiles.Protocol();
+maplibregl.setWorkerUrl(maplibreWorkerUrl);
 maplibregl.addProtocol('pmtiles', protocol.tile);
 
 function createFeaturePopup(feature) {
@@ -161,13 +163,25 @@ function MapApp() {
     }, []);
 
     return (
-        <main className="map-viewer">
-            <div className="map-viewer__canvas" ref={mapContainer} />
-            <div className="map-status" role="status" aria-live="polite">
-                {loading && <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" />}
-                <span>{status}</span>
-            </div>
-        </main>
+        <div className="container-fluid px-0 map-app">
+            <header className="row g-0 map-header">
+                <div className="col-12">
+                    <h1 className="map-header__title">
+                        <i class="fa-solid fa-map-location-dot"></i>&nbsp;
+                        WA Critical Infrastructure Map
+                    </h1>
+                </div>
+            </header>
+            <main className="row g-0 map-viewer">
+                <div className="col-12 map-viewer__column">
+                    <div className="map-viewer__canvas" ref={mapContainer} />
+                </div>
+                <div className="map-status" role="status" aria-live="polite">
+                    {loading && <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" />}
+                    <span>{status}</span>
+                </div>
+            </main>
+        </div>
     );
 }
 

@@ -2,130 +2,15 @@
 <html lang="it">
 
 <head>
-    <meta charset="utf-8" />
-    <title>PMTiles viewer</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" />
-    <style>
-        html,
-        body,
-        #map {
-            margin: 0;
-            height: 100%;
-        }
-
-        #info {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 1;
-            background: #fff;
-            padding: 6px 10px;
-            border-radius: 4px;
-            font: 12px/1.4 system-ui, sans-serif;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, .3);
-            max-width: 320px;
-        }
-    </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f2efe9" />
+    <title>WA Critical Infrastructure Map</title>
 </head>
 
 <body>
-    <div id="map"></div>
-    <div id="info">Caricamento…</div>
-
-    <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
-    <script src="https://unpkg.com/pmtiles@4.3.0/dist/pmtiles.js"></script>
-    <script>
-        // ⚠️ Cambia questo URL con quello del tuo file su S3
-        const PMTILES_URL = "https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/Road_network.pmtiles";
-
-        const info = document.getElementById("info");
-        const protocol = new pmtiles.Protocol();
-        maplibregl.addProtocol("pmtiles", protocol.tile);
-
-        const archive = new pmtiles.PMTiles(PMTILES_URL);
-        protocol.add(archive);
-
-        (async () => {
-            try {
-                const header = await archive.getHeader();
-                const meta = await archive.getMetadata();
-                const isVector = header.tileType === 1; // 1 = MVT, 2-5 = raster (png/jpg/webp/avif)
-
-                const map = new maplibregl.Map({
-                    container: "map",
-                    style: {
-                        version: 8,
-                        sources: {},
-                        layers: [{ id: "bg", type: "background", paint: { "background-color": "#f2efe9" } }],
-                    },
-                    bounds: [[header.minLon, header.minLat], [header.maxLon, header.maxLat]],
-                    fitBoundsOptions: { padding: 20 },
-                });
-                map.addControl(new maplibregl.NavigationControl());
-                map.addControl(new maplibregl.ScaleControl());
-
-                map.on("load", () => {
-                    if (isVector) {
-                        map.addSource("data", { type: "vector", url: "pmtiles://" + PMTILES_URL });
-                        const layers = (meta.vector_layers || []).map(l => l.id);
-                        const clickable = [];
-
-                        layers.forEach((id, i) => {
-                            const hue = (i * 67) % 360;
-                            const color = `hsl(${hue}, 65%, 45%)`;
-                            map.addLayer({
-                                id: `${id}-fill`, type: "fill", source: "data", "source-layer": id,
-                                filter: ["==", ["geometry-type"], "Polygon"],
-                                paint: { "fill-color": color, "fill-opacity": 0.4 },
-                            });
-                            map.addLayer({
-                                id: `${id}-line`, type: "line", source: "data", "source-layer": id,
-                                filter: ["any",
-                                    ["==", ["geometry-type"], "LineString"],
-                                    ["==", ["geometry-type"], "Polygon"]],
-                                paint: { "line-color": color, "line-width": 1 },
-                            });
-                            map.addLayer({
-                                id: `${id}-circle`, type: "circle", source: "data", "source-layer": id,
-                                filter: ["==", ["geometry-type"], "Point"],
-                                paint: { "circle-color": color, "circle-radius": 4, "circle-stroke-width": 1, "circle-stroke-color": "#fff" },
-                            });
-                            clickable.push(`${id}-fill`, `${id}-line`, `${id}-circle`);
-                        });
-
-                        map.on("click", e => {
-                            const f = map.queryRenderedFeatures(e.point, { layers: clickable })[0];
-                            if (!f) return;
-                            const rows = Object.entries(f.properties)
-                                .map(([k, v]) => `<tr><td><b>${k}</b></td><td>${v}</td></tr>`).join("");
-                            new maplibregl.Popup()
-                                .setLngLat(e.lngLat)
-                                .setHTML(`<div style="font:12px system-ui"><i>${f.sourceLayer}</i><table>${rows}</table></div>`)
-                                .addTo(map);
-                        });
-                        map.on("mousemove", e => {
-                            map.getCanvas().style.cursor =
-                                map.queryRenderedFeatures(e.point, { layers: clickable }).length ? "pointer" : "";
-                        });
-
-                        info.textContent = `Vettoriale · layer: ${layers.join(", ") || "n/d"} · zoom ${header.minZoom}–${header.maxZoom}`;
-                    } else {
-                        map.addSource("data", {
-                            type: "raster", url: "pmtiles://" + PMTILES_URL, tileSize: 256,
-                        });
-                        map.addLayer({ id: "raster", type: "raster", source: "data" });
-                        info.textContent = `Raster · zoom ${header.minZoom}–${header.maxZoom}`;
-                    }
-                });
-
-                map.on("error", e => { console.error(e); info.textContent = "Errore: " + (e.error?.message || e.message); });
-            } catch (err) {
-                console.error(err);
-                info.textContent = "Errore nel leggere il PMTiles: " + err.message;
-            }
-        })();
-    </script>
+    <div id="root"></div>
+    <script type="module" src="/main.jsx"></script>
 </body>
 
 </html>

@@ -67,11 +67,14 @@ body {
 }
 
 .feature-popup {
+    max-height: 40vh;
+    overflow-y: auto;
     font: 12px system-ui, sans-serif;
 }
 
 .feature-popup table {
     border-collapse: collapse;
+    word-break: break-word;
 }
 
 .feature-popup td {

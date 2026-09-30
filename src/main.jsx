@@ -17,7 +17,6 @@ maplibregl.addProtocol('pmtiles', protocol.tile);
 // Thin lines are almost impossible to hit with a mouse (and worse with a finger),
 // so every line/polygon outline also gets an invisible, much wider "hit area" layer
 // and pointer queries fall back to progressively larger search boxes.
-const LINE_WIDTH = ['interpolate', ['linear'], ['zoom'], 5, 0.8, 10, 1.5, 14, 2.5, 18, 4];
 const HIT_AREA_WIDTH = ['interpolate', ['linear'], ['zoom'], 5, 12, 14, 18, 18, 24];
 const HIGHLIGHT_WIDTH = ['interpolate', ['linear'], ['zoom'], 5, 3, 10, 5, 14, 7, 18, 10];
 const PICK_RADII_PX = [0, 4, 8, 12];
@@ -168,8 +167,7 @@ function MapApp() {
                                 source: 'data',
                                 'source-layer': id,
                                 filter: lineFilter,
-                                layout: { 'line-cap': 'round', 'line-join': 'round' },
-                                paint: { 'line-color': color, 'line-width': LINE_WIDTH },
+                                paint: { 'line-color': color, 'line-width': 1 },
                             });
                             map.addLayer({
                                 id: `${id}-circle`,
@@ -179,7 +177,7 @@ function MapApp() {
                                 filter: ['==', ['geometry-type'], 'Point'],
                                 paint: {
                                     'circle-color': color,
-                                    'circle-radius': 5,
+                                    'circle-radius': 4,
                                     'circle-stroke-width': 1,
                                     'circle-stroke-color': '#fff',
                                 },

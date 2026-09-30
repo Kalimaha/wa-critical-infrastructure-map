@@ -1,62 +1,72 @@
 import { useEffect, useRef, useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import * as maplibregl from 'maplibre-gl';
+import type { Map as MapLibreMap } from 'maplibre-gl';
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
-import * as pmtiles from 'pmtiles';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap/dist/js/bootstrap.bundle.min.js';
-import '@fortawesome/fontawesome-free/css/all.min.css';
-import 'maplibre-gl/dist/maplibre-gl.css';
-import './style.css';
+import { createFeaturePopup } from './featurePopup';
 
 const PMTILES_URL = 'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/Road_network.pmtiles';
-const protocol = new pmtiles.Protocol();
-maplibregl.setWorkerUrl(maplibreWorkerUrl);
-maplibregl.addProtocol('pmtiles', protocol.tile);
 
-function createFeaturePopup(feature) {
-    const content = document.createElement('div');
-    content.className = 'feature-popup';
-
-    const layer = document.createElement('em');
-    layer.textContent = feature.sourceLayer;
-    content.append(layer);
-
-    const table = document.createElement('table');
-    for (const [key, value] of Object.entries(feature.properties ?? {})) {
-        const row = table.insertRow();
-        const name = row.insertCell();
-        const property = row.insertCell();
-        name.textContent = key;
-        name.className = 'feature-popup__key';
-        property.textContent = value == null ? '' : String(value);
+function getVectorLayers(metadata: unknown): string[] {
+    if (typeof metadata !== 'object' || metadata === null || !('vector_layers' in metadata)) {
+        return [];
     }
-    content.append(table);
-    return content;
+
+    const vectorLayers = metadata.vector_layers;
+    if (!Array.isArray(vectorLayers)) {
+        return [];
+    }
+
+    return vectorLayers.flatMap(layer => {
+        if (
+            typeof layer === 'object'
+            && layer !== null
+            && 'id' in layer
+            && typeof layer.id === 'string'
+        ) {
+            return [layer.id];
+        }
+        return [];
+    });
 }
 
-function MapApp() {
-    const mapContainer = useRef(null);
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+}
+
+export function usePmtilesMap() {
+    const mapContainer = useRef<HTMLDivElement>(null);
     const [status, setStatus] = useState('Caricamento…');
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        let map;
+        let map: MapLibreMap | undefined;
+        let removeProtocol: (() => void) | undefined;
         let disposed = false;
 
         async function initializeMap() {
             try {
+                const [maplibregl, pmtiles] = await Promise.all([
+                    import('maplibre-gl'),
+                    import('pmtiles'),
+                ]);
+                if (disposed) return;
+
+                const protocol = new pmtiles.Protocol();
+                maplibregl.setWorkerUrl(maplibreWorkerUrl);
+                maplibregl.addProtocol('pmtiles', protocol.tile);
+                removeProtocol = () => maplibregl.removeProtocol('pmtiles');
+
                 const archive = new pmtiles.PMTiles(PMTILES_URL);
                 protocol.add(archive);
                 const [header, metadata] = await Promise.all([
                     archive.getHeader(),
                     archive.getMetadata(),
                 ]);
-                if (disposed) return;
+                const container = mapContainer.current;
+                if (disposed || !container) return;
 
                 const isVector = header.tileType === 1;
-                map = new maplibregl.Map({
-                    container: mapContainer.current,
+                const mapInstance = new maplibregl.Map({
+                    container,
                     style: {
                         version: 8,
                         sources: {},
@@ -69,18 +79,19 @@ function MapApp() {
                     bounds: [[header.minLon, header.minLat], [header.maxLon, header.maxLat]],
                     fitBoundsOptions: { padding: 20 },
                 });
-                map.addControl(new maplibregl.NavigationControl());
-                map.addControl(new maplibregl.ScaleControl());
+                map = mapInstance;
+                mapInstance.addControl(new maplibregl.NavigationControl());
+                mapInstance.addControl(new maplibregl.ScaleControl());
 
-                map.on('load', () => {
+                mapInstance.on('load', () => {
                     if (isVector) {
-                        map.addSource('data', { type: 'vector', url: `pmtiles://${PMTILES_URL}` });
-                        const layers = (metadata.vector_layers ?? []).map(layer => layer.id);
-                        const clickableLayers = [];
+                        mapInstance.addSource('data', { type: 'vector', url: `pmtiles://${PMTILES_URL}` });
+                        const layers = getVectorLayers(metadata);
+                        const clickableLayers: string[] = [];
 
                         layers.forEach((id, index) => {
                             const color = `hsl(${(index * 67) % 360}, 65%, 45%)`;
-                            map.addLayer({
+                            mapInstance.addLayer({
                                 id: `${id}-fill`,
                                 type: 'fill',
                                 source: 'data',
@@ -88,7 +99,7 @@ function MapApp() {
                                 filter: ['==', ['geometry-type'], 'Polygon'],
                                 paint: { 'fill-color': color, 'fill-opacity': 0.4 },
                             });
-                            map.addLayer({
+                            mapInstance.addLayer({
                                 id: `${id}-line`,
                                 type: 'line',
                                 source: 'data',
@@ -98,7 +109,7 @@ function MapApp() {
                                     ['==', ['geometry-type'], 'Polygon']],
                                 paint: { 'line-color': color, 'line-width': 1 },
                             });
-                            map.addLayer({
+                            mapInstance.addLayer({
                                 id: `${id}-circle`,
                                 type: 'circle',
                                 source: 'data',
@@ -114,16 +125,16 @@ function MapApp() {
                             clickableLayers.push(`${id}-fill`, `${id}-line`, `${id}-circle`);
                         });
 
-                        map.on('click', event => {
-                            const feature = map.queryRenderedFeatures(event.point, { layers: clickableLayers })[0];
+                        mapInstance.on('click', event => {
+                            const feature = mapInstance.queryRenderedFeatures(event.point, { layers: clickableLayers })[0];
                             if (!feature) return;
                             new maplibregl.Popup()
                                 .setLngLat(event.lngLat)
                                 .setDOMContent(createFeaturePopup(feature))
-                                .addTo(map);
+                                .addTo(mapInstance);
                         });
-                        map.on('mousemove', event => {
-                            map.getCanvas().style.cursor = map.queryRenderedFeatures(
+                        mapInstance.on('mousemove', event => {
+                            mapInstance.getCanvas().style.cursor = mapInstance.queryRenderedFeatures(
                                 event.point,
                                 { layers: clickableLayers },
                             ).length ? 'pointer' : '';
@@ -131,26 +142,26 @@ function MapApp() {
 
                         setStatus(`Vettoriale · layer: ${layers.join(', ') || 'n/d'} · zoom ${header.minZoom}–${header.maxZoom}`);
                     } else {
-                        map.addSource('data', {
+                        mapInstance.addSource('data', {
                             type: 'raster',
                             url: `pmtiles://${PMTILES_URL}`,
                             tileSize: 256,
                         });
-                        map.addLayer({ id: 'raster', type: 'raster', source: 'data' });
+                        mapInstance.addLayer({ id: 'raster', type: 'raster', source: 'data' });
                         setStatus(`Raster · zoom ${header.minZoom}–${header.maxZoom}`);
                     }
                     setLoading(false);
                 });
 
-                map.on('error', event => {
+                mapInstance.on('error', event => {
                     console.error(event);
-                    setStatus(`Errore: ${event.error?.message || event.message}`);
+                    setStatus(`Errore: ${event.error?.message || 'Errore sconosciuto'}`);
                     setLoading(false);
                 });
             } catch (error) {
                 console.error(error);
                 if (disposed) return;
-                setStatus(`Errore nel leggere il PMTiles: ${error.message}`);
+                setStatus(`Errore nel leggere il PMTiles: ${getErrorMessage(error)}`);
                 setLoading(false);
             }
         }
@@ -159,30 +170,9 @@ function MapApp() {
         return () => {
             disposed = true;
             map?.remove();
+            removeProtocol?.();
         };
     }, []);
 
-    return (
-        <div className="container-fluid px-0 map-app">
-            <header className="row g-0 map-header">
-                <div className="col-12">
-                    <h1 className="map-header__title">
-                        <i class="fa-solid fa-map-location-dot"></i>&nbsp;
-                        WA Critical Infrastructure Map
-                    </h1>
-                </div>
-            </header>
-            <main className="row g-0 map-viewer">
-                <div className="col-12 map-viewer__column">
-                    <div className="map-viewer__canvas" ref={mapContainer} />
-                </div>
-                <div className="map-status" role="status" aria-live="polite">
-                    {loading && <i className="fa-solid fa-spinner fa-spin" aria-hidden="true" />}
-                    <span>{status}</span>
-                </div>
-            </main>
-        </div>
-    );
+    return { mapContainer, status, loading };
 }
-
-createRoot(document.getElementById('root')).render(<MapApp />);

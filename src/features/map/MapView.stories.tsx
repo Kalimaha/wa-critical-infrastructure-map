@@ -15,12 +15,12 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Loading: Story = {
-    render: () => <MapView mapContainer={null} status="Caricamento…" loading />,
+    render: () => <MapView mapContainer={null} status="Loading…" loading />,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const status = canvas.getByRole('status');
 
-        await expect(status.textContent).toContain('Caricamento');
+        await expect(status.textContent).toContain('Loading');
         await expect(status.querySelector('.fa-spinner')).not.toBeNull();
     },
 };
@@ -29,9 +29,9 @@ export const Ready: Story = {
     render: () => <MapApp />,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const status = await canvas.findByText(/Vettoriale/, {}, { timeout: 60_000 });
+        const status = await canvas.findByText(/Vector/, {}, { timeout: 60_000 });
 
-        await expect(status.textContent).toContain('Vettoriale');
+        await expect(status.textContent).toContain('Vector');
         const mapCanvas = canvasElement.querySelector<HTMLCanvasElement>('.maplibregl-canvas');
         await expect(mapCanvas).not.toBeNull();
         await expect(mapCanvas?.width).toBeGreaterThan(0);

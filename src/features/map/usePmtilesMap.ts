@@ -48,7 +48,7 @@ function queryMapFeatures(map: MapLibreMap, geometry: QueryGeometry, layers: str
 
 export function usePmtilesMap() {
     const mapContainer = useRef<HTMLDivElement>(null);
-    const [status, setStatus] = useState('Caricamento…');
+    const [status, setStatus] = useState('Loading…');
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -166,7 +166,7 @@ export function usePmtilesMap() {
                             ) ? 'pointer' : '';
                         });
 
-                        setStatus(`Vettoriale · layer: ${layers.join(', ') || 'n/d'} · zoom ${header.minZoom}–${header.maxZoom}`);
+                        setStatus(`Vector · layers: ${layers.join(', ') || 'n/a'} · zoom ${header.minZoom}–${header.maxZoom}`);
                     } else {
                         mapInstance.addSource('data', {
                             type: 'raster',
@@ -181,13 +181,13 @@ export function usePmtilesMap() {
 
                 mapInstance.on('error', event => {
                     console.error(event);
-                    setStatus(`Errore: ${event.error?.message || 'Errore sconosciuto'}`);
+                    setStatus(`Error: ${event.error?.message || 'Unknown error'}`);
                     setLoading(false);
                 });
             } catch (error) {
                 console.error(error);
                 if (disposed) return;
-                setStatus(`Errore nel leggere il PMTiles: ${getErrorMessage(error)}`);
+                setStatus(`Error reading PMTiles: ${getErrorMessage(error)}`);
                 setLoading(false);
             }
         }

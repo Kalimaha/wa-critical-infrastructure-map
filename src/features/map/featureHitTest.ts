@@ -5,7 +5,7 @@ export interface ScreenPoint {
 
 export type QueryGeometry = ScreenPoint | [ScreenPoint, ScreenPoint];
 
-export const LINE_HIT_TOLERANCE = 10;
+export const LINE_HIT_TOLERANCE = 16;
 
 export function getLineHitBounds(point: ScreenPoint): [ScreenPoint, ScreenPoint] {
     return [
@@ -85,7 +85,7 @@ export function findNearestLineFeature<TFeature extends { geometry: unknown }>(
             }
         }
 
-        if (featureDistance < nearestDistance) {
+        if (featureDistance <= LINE_HIT_TOLERANCE ** 2 && featureDistance < nearestDistance) {
             nearestFeature = feature;
             nearestDistance = featureDistance;
         }
@@ -94,7 +94,7 @@ export function findNearestLineFeature<TFeature extends { geometry: unknown }>(
     return nearestFeature;
 }
 
-export function findFeatureAtPoint<TFeature extends { geometry: unknown }>(
+export function findFeatureAtPoint<TFeature extends { geometry: unknown; source?: string }>(
     point: ScreenPoint,
     clickableLayers: string[],
     lineLayers: string[],
@@ -102,7 +102,10 @@ export function findFeatureAtPoint<TFeature extends { geometry: unknown }>(
     project: (coordinate: [number, number]) => ScreenPoint,
 ): TFeature | undefined {
     const exactFeature = query(point, clickableLayers)[0];
-    if (exactFeature || lineLayers.length === 0) return exactFeature;
+    if (lineLayers.length === 0 || (exactFeature && exactFeature.source !== 'lga-boundaries')) {
+        return exactFeature;
+    }
 
-    return findNearestLineFeature(point, query(getLineHitBounds(point), lineLayers), project);
+    return findNearestLineFeature(point, query(getLineHitBounds(point), lineLayers), project)
+        ?? exactFeature;
 }

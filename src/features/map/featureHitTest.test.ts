@@ -9,15 +9,16 @@ import {
 interface TestFeature {
     geometry: { type: string; coordinates: unknown };
     name: string;
+    source?: string;
 }
 
 const project = ([longitude, latitude]: [number, number]) => ({ x: longitude, y: latitude });
 
 describe('feature hit testing', () => {
-    it('creates a 20-pixel query box around the pointer', () => {
+    it('creates a 32-pixel query box around the pointer', () => {
         expect(getLineHitBounds({ x: 30, y: 40 })).toEqual([
-            { x: 20, y: 30 },
-            { x: 40, y: 50 },
+            { x: 14, y: 24 },
+            { x: 46, y: 56 },
         ]);
     });
 
@@ -57,7 +58,60 @@ describe('feature hit testing', () => {
 
         expect(result).toBe(nearestFeature);
         expect(query).toHaveBeenNthCalledWith(1, { x: 10, y: 0 }, ['roads-line']);
-        expect(query).toHaveBeenNthCalledWith(2, [{ x: 0, y: -10 }, { x: 20, y: 10 }], ['roads-line']);
+        expect(query).toHaveBeenNthCalledWith(2, [{ x: -6, y: -16 }, { x: 26, y: 16 }], ['roads-line']);
+    });
+
+    it('prioritizes a nearby road over an exact boundary-area hit', () => {
+        const boundaryFeature: TestFeature = {
+            geometry: { type: 'Polygon', coordinates: [] },
+            name: 'boundary',
+            source: 'lga-boundaries',
+        };
+        const roadFeature: TestFeature = {
+            geometry: { type: 'LineString', coordinates: [[0, 4], [20, 4]] },
+            name: 'road',
+            source: 'data',
+        };
+        const query = vi.fn((geometry: QueryGeometry) => (
+            Array.isArray(geometry) ? [roadFeature] : [boundaryFeature]
+        ));
+
+        const result = findFeatureAtPoint(
+            { x: 10, y: 0 },
+            ['lga-boundary-hit-area'],
+            ['roads-line'],
+            query,
+            project,
+        );
+
+        expect(result).toBe(roadFeature);
+        expect(query).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps the boundary hit when no road is within tolerance', () => {
+        const boundaryFeature: TestFeature = {
+            geometry: { type: 'Polygon', coordinates: [] },
+            name: 'boundary',
+            source: 'lga-boundaries',
+        };
+        const distantRoadFeature: TestFeature = {
+            geometry: { type: 'LineString', coordinates: [[0, 18], [20, 18]] },
+            name: 'distant road',
+            source: 'data',
+        };
+        const query = vi.fn((geometry: QueryGeometry) => (
+            Array.isArray(geometry) ? [distantRoadFeature] : [boundaryFeature]
+        ));
+
+        const result = findFeatureAtPoint(
+            { x: 10, y: 0 },
+            ['lga-boundary-hit-area'],
+            ['roads-line'],
+            query,
+            project,
+        );
+
+        expect(result).toBe(boundaryFeature);
     });
 
     it('keeps MapLibre result order when line distances tie', () => {

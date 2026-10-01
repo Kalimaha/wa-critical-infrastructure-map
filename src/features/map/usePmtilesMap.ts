@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Map as MapLibreMap } from 'maplibre-gl';
+import type { ExpressionSpecification, Map as MapLibreMap } from 'maplibre-gl';
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { createFeaturePopup } from './featurePopup';
 import { findFeatureAtPoint, type QueryGeometry } from './featureHitTest';
 
 const PMTILES_URL = 'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/Road_network.pmtiles';
+
+const ROAD_NETWORK_STYLES = {
+    crossover: { color: '#7f5539', width: 1 },
+    'local road': { color: '#667085', width: 1.2 },
+    'main roads controlled path': { color: '#007f73', width: 2.8 },
+    'miscellaneous road': { color: '#8856a7', width: 1.6 },
+    'proposed road': { color: '#9a6700', width: 2.2 },
+    'state road': { color: '#c23e1d', width: 3.4 },
+} as const;
+const FALLBACK_ROAD_STYLE = { color: '#6d6d6d', width: 1.2 } as const;
 
 function getVectorLayers(metadata: unknown): string[] {
     if (typeof metadata !== 'object' || metadata === null || !('vector_layers' in metadata)) {
@@ -27,6 +37,44 @@ function getVectorLayers(metadata: unknown): string[] {
         }
         return [];
     });
+}
+
+export function isRoadLayer(layerId: string): boolean {
+    const normalized = layerId.toLowerCase();
+    return normalized.includes('road') || normalized.includes('highway');
+}
+
+export function getRoadNetworkColor(value: string | null | undefined): string {
+    const normalized = value?.trim().toLowerCase() ?? '';
+    return ROAD_NETWORK_STYLES[normalized as keyof typeof ROAD_NETWORK_STYLES]?.color
+        ?? FALLBACK_ROAD_STYLE.color;
+}
+
+export function getRoadNetworkWidth(value: string | null | undefined): number {
+    const normalized = value?.trim().toLowerCase() ?? '';
+    return ROAD_NETWORK_STYLES[normalized as keyof typeof ROAD_NETWORK_STYLES]?.width
+        ?? FALLBACK_ROAD_STYLE.width;
+}
+
+function getRoadNetworkMatchExpression(property: 'color' | 'width'): ExpressionSpecification {
+    const matchPairs = Object.entries(ROAD_NETWORK_STYLES).flatMap(([networkType, style]) => [
+        networkType,
+        style[property],
+    ]);
+    return [
+        'match',
+        ['downcase', ['get', 'NETWORK_TYPE']],
+        ...matchPairs,
+        FALLBACK_ROAD_STYLE[property],
+    ] as unknown as ExpressionSpecification;
+}
+
+export function getRoadNetworkColorExpression() {
+    return getRoadNetworkMatchExpression('color');
+}
+
+export function getRoadNetworkWidthExpression() {
+    return getRoadNetworkMatchExpression('width');
 }
 
 function getErrorMessage(error: unknown): string {
@@ -106,6 +154,7 @@ export function usePmtilesMap() {
 
                         layers.forEach((id, index) => {
                             const color = `hsl(${(index * 67) % 360}, 65%, 45%)`;
+                            const isRoad = isRoadLayer(id);
                             mapInstance.addLayer({
                                 id: `${id}-fill`,
                                 type: 'fill',
@@ -122,7 +171,10 @@ export function usePmtilesMap() {
                                 filter: ['any',
                                     ['==', ['geometry-type'], 'LineString'],
                                     ['==', ['geometry-type'], 'Polygon']],
-                                paint: { 'line-color': color, 'line-width': 1 },
+                                paint: {
+                                    'line-color': isRoad ? getRoadNetworkColorExpression() : color,
+                                    'line-width': isRoad ? getRoadNetworkWidthExpression() : 1,
+                                },
                             });
                             mapInstance.addLayer({
                                 id: `${id}-circle`,

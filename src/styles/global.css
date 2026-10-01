@@ -67,18 +67,34 @@ body {
 }
 
 .feature-popup {
-    font: 12px system-ui, sans-serif;
+    width: min(440px, calc(100vw - 48px));
+    max-height: min(55vh, 420px);
+    overflow: auto;
+    font: 12px/1.45 system-ui, sans-serif;
+}
+
+.feature-popup em {
+    display: block;
+    margin-bottom: 8px;
+    color: #18352e;
+    font-style: normal;
+    font-weight: 700;
 }
 
 .feature-popup table {
+    width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
 }
 
 .feature-popup td {
-    padding: 2px 6px 2px 0;
+    padding: 5px 8px 5px 0;
+    border-bottom: 1px solid #e5e8e5;
     vertical-align: top;
+    overflow-wrap: anywhere;
 }
 
 .feature-popup__key {
+    width: 38%;
     font-weight: 700;
 }

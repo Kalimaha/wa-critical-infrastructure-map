@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { createFeaturePopup } from './featurePopup';
+import { findFeatureAtPoint, type QueryGeometry } from './featureHitTest';
 
 const PMTILES_URL = 'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/Road_network.pmtiles';
 
@@ -30,6 +31,19 @@ function getVectorLayers(metadata: unknown): string[] {
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
+}
+
+function queryMapFeatures(map: MapLibreMap, geometry: QueryGeometry, layers: string[]) {
+    if (Array.isArray(geometry)) {
+        const bounds: [[number, number], [number, number]] = [
+            [geometry[0].x, geometry[0].y],
+            [geometry[1].x, geometry[1].y],
+        ];
+        return map.queryRenderedFeatures(bounds, { layers });
+    }
+
+    const point: [number, number] = [geometry.x, geometry.y];
+    return map.queryRenderedFeatures(point, { layers });
 }
 
 export function usePmtilesMap() {
@@ -88,6 +102,7 @@ export function usePmtilesMap() {
                         mapInstance.addSource('data', { type: 'vector', url: `pmtiles://${PMTILES_URL}` });
                         const layers = getVectorLayers(metadata);
                         const clickableLayers: string[] = [];
+                        const lineLayers: string[] = [];
 
                         layers.forEach((id, index) => {
                             const color = `hsl(${(index * 67) % 360}, 65%, 45%)`;
@@ -122,22 +137,33 @@ export function usePmtilesMap() {
                                     'circle-stroke-color': '#fff',
                                 },
                             });
-                            clickableLayers.push(`${id}-fill`, `${id}-line`, `${id}-circle`);
+                            const lineLayer = `${id}-line`;
+                            clickableLayers.push(`${id}-fill`, lineLayer, `${id}-circle`);
+                            lineLayers.push(lineLayer);
                         });
 
                         mapInstance.on('click', event => {
-                            const feature = mapInstance.queryRenderedFeatures(event.point, { layers: clickableLayers })[0];
+                            const feature = findFeatureAtPoint(
+                                event.point,
+                                clickableLayers,
+                                lineLayers,
+                                (geometry, layersToQuery) => queryMapFeatures(mapInstance, geometry, layersToQuery),
+                                coordinate => mapInstance.project(coordinate),
+                            );
                             if (!feature) return;
-                            new maplibregl.Popup()
+                            new maplibregl.Popup({ maxWidth: 'min(460px, calc(100vw - 24px))' })
                                 .setLngLat(event.lngLat)
                                 .setDOMContent(createFeaturePopup(feature))
                                 .addTo(mapInstance);
                         });
                         mapInstance.on('mousemove', event => {
-                            mapInstance.getCanvas().style.cursor = mapInstance.queryRenderedFeatures(
+                            mapInstance.getCanvas().style.cursor = findFeatureAtPoint(
                                 event.point,
-                                { layers: clickableLayers },
-                            ).length ? 'pointer' : '';
+                                clickableLayers,
+                                lineLayers,
+                                (geometry, layersToQuery) => queryMapFeatures(mapInstance, geometry, layersToQuery),
+                                coordinate => mapInstance.project(coordinate),
+                            ) ? 'pointer' : '';
                         });
 
                         setStatus(`Vettoriale · layer: ${layers.join(', ') || 'n/d'} · zoom ${header.minZoom}–${header.maxZoom}`);

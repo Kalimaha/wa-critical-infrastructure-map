@@ -5,6 +5,10 @@ import { createFeaturePopup } from './featurePopup';
 import { findFeatureAtPoint, type QueryGeometry } from './featureHitTest';
 
 const PMTILES_URL = 'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/Road_network.pmtiles';
+const LGA_BOUNDARIES_PMTILES_URL = 'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/LGA_Boundaries.pmtiles';
+
+export type MapLayerGroup = 'roads' | 'boundaries';
+export type MapLayerVisibility = Record<MapLayerGroup, boolean>;
 
 const ROAD_NETWORK_STYLES = {
     crossover: { color: '#7f5539', width: 1 },
@@ -81,6 +85,15 @@ function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
 }
 
+export function applyLayerGroupVisibility(
+    map: Pick<MapLibreMap, 'setLayoutProperty'>,
+    layerIds: string[],
+    visible: boolean,
+): void {
+    const visibility = visible ? 'visible' : 'none';
+    layerIds.forEach(layerId => map.setLayoutProperty(layerId, 'visibility', visibility));
+}
+
 function queryMapFeatures(map: MapLibreMap, geometry: QueryGeometry, layers: string[]) {
     if (Array.isArray(geometry)) {
         const bounds: [[number, number], [number, number]] = [
@@ -96,8 +109,22 @@ function queryMapFeatures(map: MapLibreMap, geometry: QueryGeometry, layers: str
 
 export function usePmtilesMap() {
     const mapContainer = useRef<HTMLDivElement>(null);
+    const mapRef = useRef<MapLibreMap | null>(null);
+    const layerGroupIdsRef = useRef<Record<MapLayerGroup, string[]>>({ roads: [], boundaries: [] });
     const [status, setStatus] = useState('Loading…');
     const [loading, setLoading] = useState(true);
+    const [layerVisibility, setLayerVisibilityState] = useState<MapLayerVisibility>({
+        roads: true,
+        boundaries: true,
+    });
+
+    function setLayerVisibility(group: MapLayerGroup, visible: boolean) {
+        const mapInstance = mapRef.current;
+        if (!mapInstance) return;
+
+        applyLayerGroupVisibility(mapInstance, layerGroupIdsRef.current[group], visible);
+        setLayerVisibilityState(current => ({ ...current, [group]: visible }));
+    }
 
     useEffect(() => {
         let map: MapLibreMap | undefined;
@@ -118,10 +145,12 @@ export function usePmtilesMap() {
                 removeProtocol = () => maplibregl.removeProtocol('pmtiles');
 
                 const archive = new pmtiles.PMTiles(PMTILES_URL);
+                const boundaryArchive = new pmtiles.PMTiles(LGA_BOUNDARIES_PMTILES_URL);
                 protocol.add(archive);
-                const [header, metadata] = await Promise.all([
-                    archive.getHeader(),
-                    archive.getMetadata(),
+                protocol.add(boundaryArchive);
+                const [[header, metadata], [boundaryHeader, boundaryMetadata]] = await Promise.all([
+                    Promise.all([archive.getHeader(), archive.getMetadata()]),
+                    Promise.all([boundaryArchive.getHeader(), boundaryArchive.getMetadata()]),
                 ]);
                 const container = mapContainer.current;
                 if (disposed || !container) return;
@@ -138,19 +167,44 @@ export function usePmtilesMap() {
                             paint: { 'background-color': '#f2efe9' },
                         }],
                     },
-                    bounds: [[header.minLon, header.minLat], [header.maxLon, header.maxLat]],
+                    bounds: [
+                        [Math.min(header.minLon, boundaryHeader.minLon), Math.min(header.minLat, boundaryHeader.minLat)],
+                        [Math.max(header.maxLon, boundaryHeader.maxLon), Math.max(header.maxLat, boundaryHeader.maxLat)],
+                    ],
                     fitBoundsOptions: { padding: 20 },
                 });
                 map = mapInstance;
+                mapRef.current = mapInstance;
                 mapInstance.addControl(new maplibregl.NavigationControl());
                 mapInstance.addControl(new maplibregl.ScaleControl());
 
                 mapInstance.on('load', () => {
                     if (isVector) {
                         mapInstance.addSource('data', { type: 'vector', url: `pmtiles://${PMTILES_URL}` });
+                        mapInstance.addSource('lga-boundaries', {
+                            type: 'vector',
+                            url: `pmtiles://${LGA_BOUNDARIES_PMTILES_URL}`,
+                        });
                         const layers = getVectorLayers(metadata);
+                        const boundaryLayers = getVectorLayers(boundaryMetadata);
                         const clickableLayers: string[] = [];
                         const lineLayers: string[] = [];
+                        const roadStyleLayerIds: string[] = [];
+                        const boundaryStyleLayerIds: string[] = [];
+
+                        boundaryLayers.forEach((id, index) => {
+                            const fillLayer = `lga-boundary-${index}-hit-area`;
+                            mapInstance.addLayer({
+                                id: fillLayer,
+                                type: 'fill',
+                                source: 'lga-boundaries',
+                                'source-layer': id,
+                                filter: ['==', ['geometry-type'], 'Polygon'],
+                                paint: { 'fill-opacity': 0 },
+                            });
+                            clickableLayers.push(fillLayer);
+                            boundaryStyleLayerIds.push(fillLayer);
+                        });
 
                         layers.forEach((id, index) => {
                             const color = `hsl(${(index * 67) % 360}, 65%, 45%)`;
@@ -189,10 +243,30 @@ export function usePmtilesMap() {
                                     'circle-stroke-color': '#fff',
                                 },
                             });
+                            roadStyleLayerIds.push(`${id}-fill`, `${id}-line`, `${id}-circle`);
                             const lineLayer = `${id}-line`;
                             clickableLayers.push(`${id}-fill`, lineLayer, `${id}-circle`);
                             lineLayers.push(lineLayer);
                         });
+
+                        boundaryLayers.forEach((id, index) => {
+                            const lineLayer = `lga-boundary-${index}-line`;
+                            mapInstance.addLayer({
+                                id: lineLayer,
+                                type: 'line',
+                                source: 'lga-boundaries',
+                                'source-layer': id,
+                                filter: ['==', ['geometry-type'], 'Polygon'],
+                                paint: { 'line-color': '#155b57', 'line-width': 1.5 },
+                            });
+                            clickableLayers.push(lineLayer);
+                            boundaryStyleLayerIds.push(lineLayer);
+                        });
+
+                        layerGroupIdsRef.current = {
+                            roads: roadStyleLayerIds,
+                            boundaries: boundaryStyleLayerIds,
+                        };
 
                         mapInstance.on('click', event => {
                             const feature = findFeatureAtPoint(
@@ -218,7 +292,7 @@ export function usePmtilesMap() {
                             ) ? 'pointer' : '';
                         });
 
-                        setStatus(`Vector · layers: ${layers.join(', ') || 'n/a'} · zoom ${header.minZoom}–${header.maxZoom}`);
+                        setStatus(`Vector · roads: ${layers.length}, LGA boundaries: ${boundaryLayers.length} · zoom ${header.minZoom}–${header.maxZoom}`);
                     } else {
                         mapInstance.addSource('data', {
                             type: 'raster',
@@ -248,9 +322,11 @@ export function usePmtilesMap() {
         return () => {
             disposed = true;
             map?.remove();
+            mapRef.current = null;
+            layerGroupIdsRef.current = { roads: [], boundaries: [] };
             removeProtocol?.();
         };
     }, []);
 
-    return { mapContainer, status, loading };
+    return { mapContainer, status, loading, layerVisibility, setLayerVisibility };
 }

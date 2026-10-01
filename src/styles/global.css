@@ -52,7 +52,7 @@ body {
 
 .map-status {
     position: absolute;
-    top: 10px;
+    bottom: 10px;
     left: 10px;
     z-index: 1;
     display: flex;
@@ -64,6 +64,46 @@ body {
     background: #fff;
     box-shadow: 0 1px 4px rgb(0 0 0 / 30%);
     font: 12px/1.4 system-ui, sans-serif;
+}
+
+.map-layer-control {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 1;
+    width: max-content;
+    max-width: calc(100vw - 20px);
+    margin: 0;
+    padding: 7px 10px 8px 14px;
+    border: 1px solid #d6d9d5;
+    border-radius: 4px;
+    background: #fff;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 30%);
+    color: #242424;
+    font: 12px/1.4 system-ui, sans-serif;
+}
+
+.map-layer-control legend {
+    float: none;
+    width: auto;
+    margin: 0 0 4px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.map-layer-control label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    cursor: pointer;
+}
+
+.map-layer-control input {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    accent-color: #007f73;
 }
 
 .feature-popup {

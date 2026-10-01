@@ -1,10 +1,34 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
+    applyLayerGroupVisibility,
     getRoadNetworkColor,
     getRoadNetworkColorExpression,
     getRoadNetworkWidth,
     getRoadNetworkWidthExpression,
 } from './usePmtilesMap';
+
+describe('map layer visibility', () => {
+    it('toggles every style layer in a group together', () => {
+        const setLayoutProperty = vi.fn();
+        const map = { setLayoutProperty };
+
+        applyLayerGroupVisibility(map, ['Road_Network-fill', 'Road_Network-line', 'Road_Network-circle'], false);
+
+        expect(setLayoutProperty).toHaveBeenCalledTimes(3);
+        expect(setLayoutProperty).toHaveBeenNthCalledWith(1, 'Road_Network-fill', 'visibility', 'none');
+        expect(setLayoutProperty).toHaveBeenNthCalledWith(2, 'Road_Network-line', 'visibility', 'none');
+        expect(setLayoutProperty).toHaveBeenNthCalledWith(3, 'Road_Network-circle', 'visibility', 'none');
+    });
+
+    it('restores visibility for a layer group', () => {
+        const setLayoutProperty = vi.fn();
+
+        applyLayerGroupVisibility({ setLayoutProperty }, ['lga-hit-area', 'lga-line'], true);
+
+        expect(setLayoutProperty).toHaveBeenNthCalledWith(1, 'lga-hit-area', 'visibility', 'visible');
+        expect(setLayoutProperty).toHaveBeenNthCalledWith(2, 'lga-line', 'visibility', 'visible');
+    });
+});
 
 describe('road network styles', () => {
     const expectedStyles = [

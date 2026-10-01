@@ -29,6 +29,42 @@ function getVectorLayers(metadata: unknown): string[] {
     });
 }
 
+function getRoadNetworkColorExpression() {
+    return [
+        'match',
+        ['downcase', ['get', 'NETWORK_TYPE']],
+        'motorway', '#2d2d2d',
+        'freeway', '#3a3a3a',
+        'state highway', '#474747',
+        'highway', '#5b5b5b',
+        'primary', '#666666',
+        'arterial', '#7a7a7a',
+        'secondary', '#8a8a8a',
+        'local', '#9a9a9a',
+        'residential', '#a7a7a7',
+        'track', '#b4b4b4',
+        '#6d6d6d',
+    ] as const;
+}
+
+function getRoadNetworkWidthExpression() {
+    return [
+        'match',
+        ['downcase', ['get', 'NETWORK_TYPE']],
+        'motorway', 4,
+        'freeway', 3.5,
+        'state highway', 3,
+        'highway', 2.8,
+        'primary', 2.5,
+        'arterial', 2.2,
+        'secondary', 1.8,
+        'local', 1.4,
+        'residential', 1.2,
+        'track', 0.9,
+        1.2,
+    ] as const;
+}
+
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
 }
@@ -105,6 +141,8 @@ export function usePmtilesMap() {
                         const lineLayers: string[] = [];
 
                         layers.forEach((id, index) => {
+                            const lowerId = id.toLowerCase();
+                            const isRoadLayer = lowerId.includes('road') || lowerId.includes('highway');
                             const color = `hsl(${(index * 67) % 360}, 65%, 45%)`;
                             mapInstance.addLayer({
                                 id: `${id}-fill`,
@@ -122,7 +160,10 @@ export function usePmtilesMap() {
                                 filter: ['any',
                                     ['==', ['geometry-type'], 'LineString'],
                                     ['==', ['geometry-type'], 'Polygon']],
-                                paint: { 'line-color': color, 'line-width': 1 },
+                                paint: {
+                                    'line-color': isRoadLayer ? getRoadNetworkColorExpression() : color,
+                                    'line-width': isRoadLayer ? getRoadNetworkWidthExpression() : 1,
+                                },
                             });
                             mapInstance.addLayer({
                                 id: `${id}-circle`,

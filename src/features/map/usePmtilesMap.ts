@@ -1,36 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Map as MapLibreMap } from 'maplibre-gl';
+import type { ExpressionSpecification, Map as MapLibreMap } from 'maplibre-gl';
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { createFeaturePopup } from './featurePopup';
 import { findFeatureAtPoint, type QueryGeometry } from './featureHitTest';
 
 const PMTILES_URL = 'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/Road_network.pmtiles';
 
-const ROAD_NETWORK_COLORS = {
-    motorway: '#2d2d2d',
-    freeway: '#3a3a3a',
-    'state highway': '#474747',
-    highway: '#5b5b5b',
-    primary: '#666666',
-    arterial: '#7a7a7a',
-    secondary: '#8a8a8a',
-    local: '#9a9a9a',
-    residential: '#a7a7a7',
-    track: '#b4b4b4',
+const ROAD_NETWORK_STYLES = {
+    crossover: { color: '#7f5539', width: 1 },
+    'local road': { color: '#667085', width: 1.2 },
+    'main roads controlled path': { color: '#007f73', width: 2.8 },
+    'miscellaneous road': { color: '#8856a7', width: 1.6 },
+    'proposed road': { color: '#9a6700', width: 2.2 },
+    'state road': { color: '#c23e1d', width: 3.4 },
 } as const;
-
-const ROAD_NETWORK_WIDTHS = {
-    motorway: 4,
-    freeway: 3.5,
-    'state highway': 3,
-    highway: 2.8,
-    primary: 2.5,
-    arterial: 2.2,
-    secondary: 1.8,
-    local: 1.4,
-    residential: 1.2,
-    track: 0.9,
-} as const;
+const FALLBACK_ROAD_STYLE = { color: '#6d6d6d', width: 1.2 } as const;
 
 function getVectorLayers(metadata: unknown): string[] {
     if (typeof metadata !== 'object' || metadata === null || !('vector_layers' in metadata)) {
@@ -62,48 +46,35 @@ export function isRoadLayer(layerId: string): boolean {
 
 export function getRoadNetworkColor(value: string | null | undefined): string {
     const normalized = value?.trim().toLowerCase() ?? '';
-    return ROAD_NETWORK_COLORS[normalized as keyof typeof ROAD_NETWORK_COLORS] ?? '#6d6d6d';
+    return ROAD_NETWORK_STYLES[normalized as keyof typeof ROAD_NETWORK_STYLES]?.color
+        ?? FALLBACK_ROAD_STYLE.color;
 }
 
 export function getRoadNetworkWidth(value: string | null | undefined): number {
     const normalized = value?.trim().toLowerCase() ?? '';
-    return ROAD_NETWORK_WIDTHS[normalized as keyof typeof ROAD_NETWORK_WIDTHS] ?? 1.2;
+    return ROAD_NETWORK_STYLES[normalized as keyof typeof ROAD_NETWORK_STYLES]?.width
+        ?? FALLBACK_ROAD_STYLE.width;
+}
+
+function getRoadNetworkMatchExpression(property: 'color' | 'width'): ExpressionSpecification {
+    const matchPairs = Object.entries(ROAD_NETWORK_STYLES).flatMap(([networkType, style]) => [
+        networkType,
+        style[property],
+    ]);
+    return [
+        'match',
+        ['downcase', ['get', 'NETWORK_TYPE']],
+        ...matchPairs,
+        FALLBACK_ROAD_STYLE[property],
+    ] as unknown as ExpressionSpecification;
 }
 
 export function getRoadNetworkColorExpression() {
-    return [
-        'match',
-        ['downcase', ['get', 'NETWORK_TYPE']],
-        'motorway', '#2d2d2d',
-        'freeway', '#3a3a3a',
-        'state highway', '#474747',
-        'highway', '#5b5b5b',
-        'primary', '#666666',
-        'arterial', '#7a7a7a',
-        'secondary', '#8a8a8a',
-        'local', '#9a9a9a',
-        'residential', '#a7a7a7',
-        'track', '#b4b4b4',
-        '#6d6d6d',
-    ] as const;
+    return getRoadNetworkMatchExpression('color');
 }
 
 export function getRoadNetworkWidthExpression() {
-    return [
-        'match',
-        ['downcase', ['get', 'NETWORK_TYPE']],
-        'motorway', 4,
-        'freeway', 3.5,
-        'state highway', 3,
-        'highway', 2.8,
-        'primary', 2.5,
-        'arterial', 2.2,
-        'secondary', 1.8,
-        'local', 1.4,
-        'residential', 1.2,
-        'track', 0.9,
-        1.2,
-    ] as const;
+    return getRoadNetworkMatchExpression('width');
 }
 
 function getErrorMessage(error: unknown): string {

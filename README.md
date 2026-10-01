@@ -1,5 +1,7 @@
 # WA critical infrastructure map
 
+[![Pull request tests](https://github.com/Kalimaha/wa-critical-infrastructure-map/actions/workflows/pull-request-tests.yml/badge.svg?event=pull_request)](https://github.com/Kalimaha/wa-critical-infrastructure-map/actions/workflows/pull-request-tests.yml)
+
 A study case for an interactive web map of WA's critical infrastructure: police stations, prisons, roads and airports. WIP available [here](https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/dist/index.html).
 
 * [Documents](./docs/README.md)

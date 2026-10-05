@@ -1,5 +1,5 @@
 import type { Ref } from 'react';
-import type { MapLayerGroup, MapLayerVisibility } from './usePmtilesMap';
+import { ROAD_NETWORK_STYLES, type MapLayerGroup, type MapLayerVisibility } from './usePmtilesMap';
 
 export interface MapViewProps {
     mapContainer?: Ref<HTMLDivElement> | null;
@@ -16,6 +16,11 @@ function MapView({
     layerVisibility,
     onLayerVisibilityChange,
 }: MapViewProps) {
+    const roadLegendEntries = Object.entries(ROAD_NETWORK_STYLES).map(([label, style]) => ({
+        label,
+        color: style.color,
+    }));
+
     return (
         <div className="container-fluid px-0 map-app">
             <header className="row g-0 map-header">
@@ -36,9 +41,28 @@ function MapView({
                         <span>{status}</span>
                     </div>
                 )}
+                <div className="map-legend" aria-label="Road network legend">
+                    <div className="map-legend__title">Legend</div>
+                    <ul className="map-legend__list">
+                        {roadLegendEntries.map(({ label, color }) => (
+                            <li key={label} className="map-legend__item">
+                                <span className="map-legend__swatch" style={{ backgroundColor: color }} aria-hidden="true" />
+                                <span>{label}</span>
+                            </li>
+                        ))}
+                        <li className="map-legend__item">
+                            <span className="map-legend__swatch map-legend__swatch--boundary" aria-hidden="true" />
+                            <span>LGA boundaries</span>
+                        </li>
+                        <li className="map-legend__item">
+                            <span className="map-legend__swatch map-legend__swatch--facility" aria-hidden="true" />
+                            <span>Police facilities</span>
+                        </li>
+                    </ul>
+                </div>
                 {onLayerVisibilityChange && (
-                    <fieldset className="map-layer-control" disabled={loading}>
-                        <legend>Map layers</legend>
+                    <div className="map-layer-control" role="group" aria-labelledby="map-layers-title" aria-disabled={loading}>
+                        <div id="map-layers-title" className="map-layer-control__title">Map layers</div>
                         <label>
                             <input
                                 type="checkbox"
@@ -55,7 +79,15 @@ function MapView({
                             />
                             LGA boundaries
                         </label>
-                    </fieldset>
+                        <label>
+                            <input
+                                type="checkbox"
+                                checked={layerVisibility?.facilities ?? true}
+                                onChange={event => onLayerVisibilityChange('facilities', event.currentTarget.checked)}
+                            />
+                            Police facilities
+                        </label>
+                    </div>
                 )}
             </main>
         </div>

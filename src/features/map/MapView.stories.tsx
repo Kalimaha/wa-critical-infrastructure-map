@@ -149,9 +149,9 @@ export const RoadNetworkStyles: Story = {
         const canvas = within(canvasElement);
         await expect(canvas.getAllByRole('listitem')).toHaveLength(7);
         await expect(canvas.getByLabelText('State Road line sample').getAttribute('style'))
-            .toContain('height: 3.4px');
+            .toContain('height: 0.8px');
         await expect(canvas.getByLabelText('Unknown network type line sample').getAttribute('style'))
-            .toContain('height: 1.2px');
+            .toContain('height: 0.8px');
     },
 };
 

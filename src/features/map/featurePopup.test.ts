@@ -16,14 +16,14 @@ describe('createFeaturePopup', () => {
         expect(popup.querySelector('em, table')).toBeNull();
     });
 
-    it('shows only the road name and network type for a road', () => {
+    it('labels a road from the attributes kept in the tiles', () => {
         const popup = createFeaturePopup({
             source: 'data',
             sourceLayer: 'Road_Network',
             properties: {
                 ROAD_NAME: 'Great Northern Hwy',
+                COMMON_USAGE_NAME: 'Great Northern Highway',
                 NETWORK_TYPE: 'State Road',
-                OBJECTID: 100,
             },
         });
 
@@ -31,16 +31,28 @@ describe('createFeaturePopup', () => {
         expect(popup.querySelector('em, table')).toBeNull();
     });
 
-    it('falls back to common usage name when the road name is unavailable', () => {
+    it('falls back to common usage name when the road name is blank', () => {
         const popup = createFeaturePopup({
             source: 'data',
             properties: {
-                COMMON_USAGE_NAME: 'Great Northern Hwy',
-                NETWORK_TYPE: 'State Road',
+                ROAD_NAME: '   ',
+                COMMON_USAGE_NAME: 'Old Haul Rd',
+                NETWORK_TYPE: 'Local Road',
             },
         });
 
-        expect(popup.textContent).toBe('Great Northern Hwy (State Road)');
+        expect(popup.textContent).toBe('Old Haul Rd (Local Road)');
+    });
+
+    it('shows the road name when the network type is missing', () => {
+        const popup = createFeaturePopup({
+            source: 'data',
+            properties: {
+                ROAD_NAME: 'Barrack St',
+            },
+        });
+
+        expect(popup.textContent).toBe('Barrack St');
     });
 
     it('renders feature values as text and handles null properties', () => {

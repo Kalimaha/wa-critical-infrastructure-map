@@ -19,12 +19,13 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const roadNetworkTypes = [
-    'Crossover',
-    'Local Road',
-    'Main Roads Controlled Path',
-    'Miscellaneous Road',
-    'Proposed Road',
-    'State Road',
+    { label: 'Crossover', networkType: 'Crossover' },
+    { label: 'Local Road', networkType: 'Local Road' },
+    { label: 'Main Roads Controlled Path', networkType: 'Main Roads Controlled Path' },
+    { label: 'Miscellaneous Road', networkType: 'Miscellaneous Road' },
+    { label: 'Proposed Road', networkType: 'Proposed Road' },
+    { label: 'State Road', networkType: 'State Road' },
+    { label: 'Unknown network type', networkType: 'not in the layer' },
 ];
 
 function RoadNetworkStylesPreview() {
@@ -39,11 +40,11 @@ function RoadNetworkStylesPreview() {
             <section style={{ maxWidth: '700px', margin: '0 auto' }}>
                 <h1 style={{ fontSize: '22px', margin: '0 0 24px' }}>Road network styling</h1>
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                    {roadNetworkTypes.map(networkType => {
+                    {roadNetworkTypes.map(({ label, networkType }) => {
                         const width = getRoadNetworkWidth(networkType);
                         return (
                             <li
-                                key={networkType}
+                                key={label}
                                 style={{
                                     display: 'grid',
                                     gridTemplateColumns: 'minmax(150px, 1fr) minmax(80px, 2fr) 55px',
@@ -53,10 +54,10 @@ function RoadNetworkStylesPreview() {
                                     borderBottom: '1px solid #d5d1c9',
                                 }}
                             >
-                                <span>{networkType}</span>
+                                <span>{label}</span>
                                 <span style={{ height: '18px', display: 'flex', alignItems: 'center' }}>
                                     <span
-                                        aria-label={`${networkType} line sample`}
+                                        aria-label={`${label} line sample`}
                                         style={{
                                             display: 'block',
                                             width: '100%',
@@ -146,9 +147,11 @@ export const RoadNetworkStyles: Story = {
     render: () => <RoadNetworkStylesPreview />,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(canvas.getAllByRole('listitem')).toHaveLength(6);
+        await expect(canvas.getAllByRole('listitem')).toHaveLength(7);
         await expect(canvas.getByLabelText('State Road line sample').getAttribute('style'))
             .toContain('height: 3.4px');
+        await expect(canvas.getByLabelText('Unknown network type line sample').getAttribute('style'))
+            .toContain('height: 1.2px');
     },
 };
 
@@ -159,8 +162,8 @@ export const RoadFeaturePopup: Story = {
             sourceLayer: 'Road_Network',
             properties: {
                 ROAD_NAME: 'Great Northern Hwy',
+                COMMON_USAGE_NAME: 'Great Northern Highway',
                 NETWORK_TYPE: 'State Road',
-                OBJECTID: 100,
             },
         }} />
     ),
@@ -169,6 +172,25 @@ export const RoadFeaturePopup: Story = {
         await expect(canvas.getByText('Great Northern Hwy (State Road)')).toBeTruthy();
         await expect(canvas.queryByRole('table')).toBeNull();
         await expect(canvas.queryByText('Road_Network')).toBeNull();
+    },
+};
+
+export const RoadFeaturePopupCommonUsage: Story = {
+    render: () => (
+        <FeaturePopupPreview feature={{
+            source: 'data',
+            sourceLayer: 'Road_Network',
+            properties: {
+                ROAD_NAME: '   ',
+                COMMON_USAGE_NAME: 'Old Haul Rd',
+                NETWORK_TYPE: 'Local Road',
+            },
+        }} />
+    ),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(canvas.getByText('Old Haul Rd (Local Road)')).toBeTruthy();
+        await expect(canvas.queryByRole('table')).toBeNull();
     },
 };
 

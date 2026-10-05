@@ -127,6 +127,30 @@ describe('feature hit testing', () => {
         expect(findNearestLineFeature({ x: 10, y: 0 }, [firstFeature, secondFeature], project)).toBe(firstFeature);
     });
 
+    it('hits a road whose pieces meet and misses the gap when they do not', () => {
+        const westernPiece: TestFeature = {
+            geometry: { type: 'LineString', coordinates: [[0, 0], [20, 0]] },
+            name: 'western',
+        };
+        const easternPiece: TestFeature = {
+            geometry: { type: 'LineString', coordinates: [[20, 0], [40, 0]] },
+            name: 'eastern',
+        };
+        const interruptedPiece: TestFeature = {
+            geometry: { type: 'LineString', coordinates: [[80, 0], [100, 0]] },
+            name: 'interrupted',
+        };
+
+        expect(findNearestLineFeature({ x: 20, y: 0 }, [westernPiece, easternPiece], project)).toBe(westernPiece);
+        expect(findNearestLineFeature(
+            { x: 60, y: 0 },
+            [easternPiece, interruptedPiece],
+            project,
+        )).toBeUndefined();
+        expect(findNearestLineFeature({ x: 90, y: 0 }, [easternPiece, interruptedPiece], project))
+            .toBe(interruptedPiece);
+    });
+
     it('returns no feature when exact and nearby line queries miss', () => {
         const query = vi.fn(() => []);
 

@@ -18,12 +18,16 @@ function includedAttributes(source: string): string[] {
 }
 
 describe('PMTiles conversion', () => {
-    const [roadsCommand, boundaryCommand] = tippecanoeCommands();
+    const [roadsCommand, boundaryCommand, policeFacilitiesCommand] = tippecanoeCommands();
 
-    it('converts both the road network and the LGA boundaries', () => {
-        expect(tippecanoeCommands()).toHaveLength(2);
+    it('converts the road network, LGA boundaries, and police facilities', () => {
+        expect(tippecanoeCommands()).toHaveLength(3);
         expect(roadsCommand).toContain('../data/raw/Road_Network.geojson');
         expect(boundaryCommand).toContain('LGA_Boundaries_LGATE_233_WA_GDA2020_Public.geojson');
+        expect(policeFacilitiesCommand).toContain('WAPoliceForceFacilities_SHP');
+        expect(policeFacilitiesCommand).toContain('glob.glob');
+        expect(policeFacilitiesCommand).toContain('geojson_path');
+        expect(policeFacilitiesCommand).toContain('pmtiles_path');
     });
 
     it('keeps every road feature at the highest zoom', () => {

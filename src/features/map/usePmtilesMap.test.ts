@@ -28,16 +28,25 @@ describe('map layer visibility', () => {
         expect(setLayoutProperty).toHaveBeenNthCalledWith(1, 'lga-hit-area', 'visibility', 'visible');
         expect(setLayoutProperty).toHaveBeenNthCalledWith(2, 'lga-line', 'visibility', 'visible');
     });
+
+    it('supports the police facilities layer group', () => {
+        const setLayoutProperty = vi.fn();
+
+        applyLayerGroupVisibility({ setLayoutProperty }, ['facility-1', 'facility-2'], true);
+
+        expect(setLayoutProperty).toHaveBeenNthCalledWith(1, 'facility-1', 'visibility', 'visible');
+        expect(setLayoutProperty).toHaveBeenNthCalledWith(2, 'facility-2', 'visibility', 'visible');
+    });
 });
 
 describe('road network styles', () => {
     const expectedStyles = [
-        { networkType: 'Crossover', color: '#7f5539', width: 1 },
-        { networkType: 'Local Road', color: '#667085', width: 1.2 },
-        { networkType: 'Main Roads Controlled Path', color: '#007f73', width: 2.8 },
-        { networkType: 'Miscellaneous Road', color: '#8856a7', width: 1.6 },
-        { networkType: 'Proposed Road', color: '#9a6700', width: 2.2 },
-        { networkType: 'State Road', color: '#c23e1d', width: 3.4 },
+        { networkType: 'Crossover', color: 'hsl(220 6% 95%)', width: 0.8 },
+        { networkType: 'Local Road', color: 'hsl(220 5% 88%)', width: 0.8 },
+        { networkType: 'Main Roads Controlled Path', color: 'hsl(220 4% 79%)', width: 0.8 },
+        { networkType: 'Miscellaneous Road', color: 'hsl(220 4% 68%)', width: 0.8 },
+        { networkType: 'Proposed Road', color: 'hsl(220 4% 56%)', width: 0.8 },
+        { networkType: 'State Road', color: 'hsl(220 4% 42%)', width: 0.8 },
     ];
 
     it('assigns the expected color and width to each NETWORK_TYPE', () => {
@@ -61,6 +70,6 @@ describe('road network styles', () => {
 
     it('normalizes values and falls back for unknown types', () => {
         expect(getRoadNetworkColor('  STATE ROAD ')).toBe(getRoadNetworkColor('State Road'));
-        expect(getRoadNetworkWidth('unknown')).toBe(1.2);
+        expect(getRoadNetworkWidth('unknown')).toBe(0.8);
     });
 });

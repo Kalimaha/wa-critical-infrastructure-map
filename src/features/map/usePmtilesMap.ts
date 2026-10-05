@@ -1,25 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ExpressionSpecification, Map as MapLibreMap } from 'maplibre-gl';
+import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { createFeaturePopup } from './featurePopup';
 import { findFeatureAtPoint, type QueryGeometry } from './featureHitTest';
+import {
+    createPoliceFacilityClusterSource,
+    expandPoliceFacilityCluster,
+    getPoliceFacilityClusterLayers,
+    loadPoliceFacilityFeatures,
+} from './policeFacilities';
 import { ROAD_NETWORK_TYPE_ATTRIBUTE } from './roadAttributes';
 
 const PMTILES_URL = 'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/Road_network.pmtiles';
 const LGA_BOUNDARIES_PMTILES_URL = 'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/LGA_Boundaries.pmtiles';
+const POLICE_FACILITIES_PMTILES_URL = 'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/Police_Facilities.pmtiles';
 
-export type MapLayerGroup = 'roads' | 'boundaries';
+export type MapLayerGroup = 'roads' | 'boundaries' | 'facilities';
 export type MapLayerVisibility = Record<MapLayerGroup, boolean>;
 
-const ROAD_NETWORK_STYLES = {
-    crossover: { color: '#7f5539', width: 1 },
-    'local road': { color: '#667085', width: 1.2 },
-    'main roads controlled path': { color: '#007f73', width: 2.8 },
-    'miscellaneous road': { color: '#8856a7', width: 1.6 },
-    'proposed road': { color: '#9a6700', width: 2.2 },
-    'state road': { color: '#c23e1d', width: 3.4 },
+const ROAD_WIDTH = 0.8;
+
+export const ROAD_NETWORK_STYLES = {
+    crossover: { color: 'hsl(220 6% 95%)', width: ROAD_WIDTH },
+    'local road': { color: 'hsl(220 5% 88%)', width: ROAD_WIDTH },
+    'main roads controlled path': { color: 'hsl(220 4% 79%)', width: ROAD_WIDTH },
+    'miscellaneous road': { color: 'hsl(220 4% 68%)', width: ROAD_WIDTH },
+    'proposed road': { color: 'hsl(220 4% 56%)', width: ROAD_WIDTH },
+    'state road': { color: 'hsl(220 4% 42%)', width: ROAD_WIDTH },
 } as const;
-const FALLBACK_ROAD_STYLE = { color: '#6d6d6d', width: 1.2 } as const;
+export const FALLBACK_ROAD_STYLE = { color: 'hsl(220 4% 82%)', width: ROAD_WIDTH } as const;
 
 function getVectorLayers(metadata: unknown): string[] {
     if (typeof metadata !== 'object' || metadata === null || !('vector_layers' in metadata)) {
@@ -111,12 +120,13 @@ function queryMapFeatures(map: MapLibreMap, geometry: QueryGeometry, layers: str
 export function usePmtilesMap() {
     const mapContainer = useRef<HTMLDivElement>(null);
     const mapRef = useRef<MapLibreMap | null>(null);
-    const layerGroupIdsRef = useRef<Record<MapLayerGroup, string[]>>({ roads: [], boundaries: [] });
+    const layerGroupIdsRef = useRef<Record<MapLayerGroup, string[]>>({ roads: [], boundaries: [], facilities: [] });
     const [status, setStatus] = useState('Loading…');
     const [loading, setLoading] = useState(true);
     const [layerVisibility, setLayerVisibilityState] = useState<MapLayerVisibility>({
         roads: true,
         boundaries: true,
+        facilities: true,
     });
 
     function setLayerVisibility(group: MapLayerGroup, visible: boolean) {
@@ -147,12 +157,20 @@ export function usePmtilesMap() {
 
                 const archive = new pmtiles.PMTiles(PMTILES_URL);
                 const boundaryArchive = new pmtiles.PMTiles(LGA_BOUNDARIES_PMTILES_URL);
+                const policeFacilitiesArchive = new pmtiles.PMTiles(POLICE_FACILITIES_PMTILES_URL);
                 protocol.add(archive);
                 protocol.add(boundaryArchive);
-                const [[header, metadata], [boundaryHeader, boundaryMetadata]] = await Promise.all([
+                const [[header, metadata], [boundaryHeader, boundaryMetadata], [facilityHeader, facilityMetadata]] = await Promise.all([
                     Promise.all([archive.getHeader(), archive.getMetadata()]),
                     Promise.all([boundaryArchive.getHeader(), boundaryArchive.getMetadata()]),
+                    Promise.all([policeFacilitiesArchive.getHeader(), policeFacilitiesArchive.getMetadata()]),
                 ]);
+                const facilityLayerIds = getVectorLayers(facilityMetadata);
+                const policeFacilityFeatures = await loadPoliceFacilityFeatures(
+                    policeFacilitiesArchive,
+                    facilityHeader,
+                    facilityLayerIds,
+                );
                 const container = mapContainer.current;
                 if (disposed || !container) return;
 
@@ -186,12 +204,16 @@ export function usePmtilesMap() {
                             type: 'vector',
                             url: `pmtiles://${LGA_BOUNDARIES_PMTILES_URL}`,
                         });
+                        mapInstance.addSource('police-facilities-cluster', {
+                            ...createPoliceFacilityClusterSource(policeFacilityFeatures),
+                        });
                         const layers = getVectorLayers(metadata);
                         const boundaryLayers = getVectorLayers(boundaryMetadata);
                         const clickableLayers: string[] = [];
                         const lineLayers: string[] = [];
                         const roadStyleLayerIds: string[] = [];
                         const boundaryStyleLayerIds: string[] = [];
+                        const facilityStyleLayerIds: string[] = [];
 
                         boundaryLayers.forEach((id, index) => {
                             const fillLayer = `lga-boundary-${index}-hit-area`;
@@ -258,15 +280,34 @@ export function usePmtilesMap() {
                                 source: 'lga-boundaries',
                                 'source-layer': id,
                                 filter: ['==', ['geometry-type'], 'Polygon'],
-                                paint: { 'line-color': '#155b57', 'line-width': 1.5 },
+                                paint: { 'line-color': '#00843D', 'line-width': 1.2 },
                             });
                             clickableLayers.push(lineLayer);
                             boundaryStyleLayerIds.push(lineLayer);
                         });
 
+                        const clusterLayers = getPoliceFacilityClusterLayers(
+                            'police-facilities-cluster',
+                            'police-facilities',
+                        );
+                        mapInstance.addLayer(clusterLayers.cluster);
+                        mapInstance.addLayer(clusterLayers.count);
+                        mapInstance.addLayer(clusterLayers.unclustered);
+                        clickableLayers.push(clusterLayers.cluster.id, clusterLayers.unclustered.id);
+                        facilityStyleLayerIds.push(
+                            clusterLayers.cluster.id,
+                            clusterLayers.count.id,
+                            clusterLayers.unclustered.id,
+                        );
+
+                        if (policeFacilityFeatures.length === 0) {
+                            console.warn('No police facility points were found in the PMTiles archive.');
+                        }
+
                         layerGroupIdsRef.current = {
                             roads: roadStyleLayerIds,
                             boundaries: boundaryStyleLayerIds,
+                            facilities: facilityStyleLayerIds,
                         };
 
                         mapInstance.on('click', event => {
@@ -278,6 +319,19 @@ export function usePmtilesMap() {
                                 coordinate => mapInstance.project(coordinate),
                             );
                             if (!feature) return;
+
+                            const pointCount = feature.properties?.point_count;
+                            if (typeof pointCount === 'number') {
+                                const clusterId = feature.properties?.cluster_id;
+                                if (typeof clusterId !== 'number') return;
+                                if (feature.geometry.type !== 'Point') return;
+                                const [lng, lat] = feature.geometry.coordinates;
+                                const clusterSource = mapInstance.getSource('police-facilities-cluster') as GeoJSONSource | undefined;
+                                if (!clusterSource) return;
+                                void expandPoliceFacilityCluster(clusterSource, mapInstance, clusterId, [lng, lat]);
+                                return;
+                            }
+
                             new maplibregl.Popup({ maxWidth: 'min(460px, calc(100vw - 24px))' })
                                 .setLngLat(event.lngLat)
                                 .setDOMContent(createFeaturePopup(feature))
@@ -293,7 +347,7 @@ export function usePmtilesMap() {
                             ) ? 'pointer' : '';
                         });
 
-                        setStatus(`Vector · roads: ${layers.length}, LGA boundaries: ${boundaryLayers.length} · zoom ${header.minZoom}–${header.maxZoom}`);
+                        setStatus(`Vector · roads: ${layers.length}, LGA boundaries: ${boundaryLayers.length}, police facilities: ${policeFacilityFeatures.length} · zoom ${header.minZoom}–${header.maxZoom}`);
                     } else {
                         mapInstance.addSource('data', {
                             type: 'raster',
@@ -324,7 +378,7 @@ export function usePmtilesMap() {
             disposed = true;
             map?.remove();
             mapRef.current = null;
-            layerGroupIdsRef.current = { roads: [], boundaries: [] };
+            layerGroupIdsRef.current = { roads: [], boundaries: [], facilities: [] };
             removeProtocol?.();
         };
     }, []);

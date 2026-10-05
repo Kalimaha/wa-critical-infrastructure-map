@@ -103,7 +103,7 @@ function FeaturePopupPreview({ feature }: { feature: PopupFeature }) {
 }
 
 function LayerControlsPreview() {
-    const [visibility, setVisibility] = useState<MapLayerVisibility>({ roads: true, boundaries: true });
+    const [visibility, setVisibility] = useState<MapLayerVisibility>({ roads: true, boundaries: true, facilities: true });
 
     function handleVisibilityChange(group: MapLayerGroup, visible: boolean) {
         setVisibility(current => ({ ...current, [group]: visible }));
@@ -149,9 +149,9 @@ export const RoadNetworkStyles: Story = {
         const canvas = within(canvasElement);
         await expect(canvas.getAllByRole('listitem')).toHaveLength(7);
         await expect(canvas.getByLabelText('State Road line sample').getAttribute('style'))
-            .toContain('height: 3.4px');
+            .toContain('height: 0.8px');
         await expect(canvas.getByLabelText('Unknown network type line sample').getAttribute('style'))
-            .toContain('height: 1.2px');
+            .toContain('height: 0.8px');
     },
 };
 
@@ -213,19 +213,67 @@ export const BoundaryFeaturePopup: Story = {
     },
 };
 
-export const LayerControls: Story = {
+export const MapLayers: Story = {
     render: () => <LayerControlsPreview />,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
+        const control = canvas.getByRole('group', { name: 'Map layers' });
         const roads = canvas.getByRole('checkbox', { name: 'Roads' }) as HTMLInputElement;
         const boundaries = canvas.getByRole('checkbox', { name: 'LGA boundaries' }) as HTMLInputElement;
+        const facilities = canvas.getByRole('checkbox', { name: 'Police facilities' }) as HTMLInputElement;
 
+        await expect(control.textContent).toContain('Map layers');
         await expect(roads.checked).toBe(true);
         await expect(boundaries.checked).toBe(true);
+        await expect(facilities.checked).toBe(true);
         await userEvent.click(roads);
         await expect(roads.checked).toBe(false);
         await expect(boundaries.checked).toBe(true);
         await userEvent.click(boundaries);
         await expect(boundaries.checked).toBe(false);
+        await userEvent.click(facilities);
+        await expect(facilities.checked).toBe(false);
+    },
+};
+
+export const Legend: Story = {
+    render: () => <MapView mapContainer={null} status="Vector layers ready" loading={false} />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const legend = canvas.getByLabelText('Road network legend');
+        const entries = within(legend).getAllByRole('listitem');
+
+        await expect(within(legend).getByText('Legend')).toBeTruthy();
+        await expect(entries.map(entry => entry.textContent?.trim())).toEqual([
+            'crossover',
+            'local road',
+            'main roads controlled path',
+            'miscellaneous road',
+            'proposed road',
+            'state road',
+            'LGA boundaries',
+            'Police facilities',
+        ]);
+    },
+};
+
+export const PoliceFacilitiesClusters: Story = {
+    render: () => <MapApp />,
+    parameters: {
+        docs: {
+            description: {
+                story: 'Police facility points aggregate into blue count badges at overview zoom; clicking a badge zooms to the cluster, while individual points retain their facility popups.',
+            },
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByRole('region', { name: 'Map' }, { timeout: 60_000 });
+        const mapCanvas = canvasElement.querySelector<HTMLCanvasElement>('.maplibregl-canvas');
+        await expect(mapCanvas).not.toBeNull();
+        await expect(mapCanvas?.width).toBeGreaterThan(0);
+        await expect(mapCanvas?.height).toBeGreaterThan(0);
+        await expect(canvas.getByRole('checkbox', { name: 'Police facilities' })).toBeTruthy();
+        await waitFor(() => expect(canvas.queryByRole('status')).toBeNull(), { timeout: 60_000 });
     },
 };

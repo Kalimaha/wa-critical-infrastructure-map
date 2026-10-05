@@ -1,3 +1,10 @@
+import {
+    BOUNDARY_NAME_ATTRIBUTE,
+    ROAD_COMMON_USAGE_ATTRIBUTE,
+    ROAD_NAME_ATTRIBUTE,
+    ROAD_NETWORK_TYPE_ATTRIBUTE,
+} from './roadAttributes';
+
 export interface PopupFeature {
     source?: string;
     sourceLayer?: string;
@@ -19,16 +26,16 @@ export function createFeaturePopup(feature: PopupFeature): HTMLDivElement {
 
     if (feature.source === 'lga-boundaries') {
         const name = document.createElement('strong');
-        name.textContent = formatBoundaryName(feature.properties?.name);
+        name.textContent = formatBoundaryName(feature.properties?.[BOUNDARY_NAME_ATTRIBUTE]);
         content.append(name);
         return content;
     }
 
     if (feature.source === 'data') {
         const properties = feature.properties ?? {};
-        const roadName = getTextProperty(properties.ROAD_NAME)
-            || getTextProperty(properties.COMMON_USAGE_NAME);
-        const networkType = getTextProperty(properties.NETWORK_TYPE);
+        const roadName = getTextProperty(properties[ROAD_NAME_ATTRIBUTE])
+            || getTextProperty(properties[ROAD_COMMON_USAGE_ATTRIBUTE]);
+        const networkType = getTextProperty(properties[ROAD_NETWORK_TYPE_ATTRIBUTE]);
         const label = document.createElement('strong');
         label.textContent = networkType ? `${roadName} (${networkType})` : roadName;
         content.append(label);

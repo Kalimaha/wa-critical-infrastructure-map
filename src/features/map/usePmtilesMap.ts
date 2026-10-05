@@ -3,6 +3,7 @@ import type { ExpressionSpecification, Map as MapLibreMap } from 'maplibre-gl';
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import { createFeaturePopup } from './featurePopup';
 import { findFeatureAtPoint, type QueryGeometry } from './featureHitTest';
+import { ROAD_NETWORK_TYPE_ATTRIBUTE } from './roadAttributes';
 
 const PMTILES_URL = 'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/Road_network.pmtiles';
 const LGA_BOUNDARIES_PMTILES_URL = 'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/LGA_Boundaries.pmtiles';
@@ -67,7 +68,7 @@ function getRoadNetworkMatchExpression(property: 'color' | 'width'): ExpressionS
     ]);
     return [
         'match',
-        ['downcase', ['get', 'NETWORK_TYPE']],
+        ['downcase', ['get', ROAD_NETWORK_TYPE_ATTRIBUTE]],
         ...matchPairs,
         FALLBACK_ROAD_STYLE[property],
     ] as unknown as ExpressionSpecification;

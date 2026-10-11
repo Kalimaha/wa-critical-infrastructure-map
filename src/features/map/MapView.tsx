@@ -90,6 +90,10 @@ function MapView({
                     </div>
                 )}
             </main>
+            <footer className="map-attribution">
+                All raw data shown on this map is from{' '}
+                <a href="https://data.wa.gov.au/" target="_blank" rel="noopener noreferrer">Data WA</a>.
+            </footer>
         </div>
     );
 }

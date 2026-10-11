@@ -25,9 +25,14 @@ afterEach(() => {
 });
 
 describe('map layer control', () => {
-    const visibility: MapLayerVisibility = { roads: true, boundaries: false, facilities: true };
+    const visibility: MapLayerVisibility = {
+        roads: true,
+        boundaries: false,
+        facilities: true,
+        responseCoverage: false,
+    };
 
-    it('shows all three layer toggles with the supplied visibility', () => {
+    it('shows all four layer toggles with the supplied visibility', () => {
         const container = renderMapView({
             status: 'Ready',
             loading: false,
@@ -38,16 +43,17 @@ describe('map layer control', () => {
         const checkboxes = [...container.querySelectorAll<HTMLInputElement>('.map-layer-control input')];
 
         expect(control?.textContent).toContain('Map layers');
-        expect(checkboxes).toHaveLength(3);
+        expect(checkboxes).toHaveLength(4);
         expect(checkboxes.map(checkbox => checkbox.parentElement?.textContent?.trim())).toEqual([
             'Roads',
             'LGA boundaries',
             'Police facilities',
+            'Response coverage (WIP)',
         ]);
-        expect(checkboxes.map(checkbox => checkbox.checked)).toEqual([true, false, true]);
+        expect(checkboxes.map(checkbox => checkbox.checked)).toEqual([true, false, true, false]);
     });
 
-    it('notifies the parent when police facilities are toggled', () => {
+    it('notifies the parent when response coverage is toggled', () => {
         const onLayerVisibilityChange = vi.fn();
         const container = renderMapView({
             status: 'Ready',
@@ -55,16 +61,16 @@ describe('map layer control', () => {
             layerVisibility: visibility,
             onLayerVisibilityChange,
         });
-        const facilities = [...container.querySelectorAll<HTMLInputElement>('.map-layer-control input')][2];
+        const responseCoverage = [...container.querySelectorAll<HTMLInputElement>('.map-layer-control input')][3];
 
-        act(() => facilities.click());
+        act(() => responseCoverage.click());
 
-        expect(onLayerVisibilityChange).toHaveBeenCalledWith('facilities', false);
+        expect(onLayerVisibilityChange).toHaveBeenCalledWith('responseCoverage', true);
     });
 });
 
 describe('map legend', () => {
-    it('shows road classes, LGA boundaries, and police facilities', () => {
+    it('shows road classes, boundaries, facilities, and response coverage', () => {
         const container = renderMapView({ status: 'Ready', loading: false });
         const legend = container.querySelector('[aria-label="Road network legend"]');
         const entries = [...container.querySelectorAll('.map-legend__item')]
@@ -80,8 +86,16 @@ describe('map legend', () => {
             'state road',
             'LGA boundaries',
             'Police facilities',
+            'Response coverage: under 5 min',
+            'Response coverage: 5–10 min',
+            'Response coverage: 10–15 min',
+            'Response coverage: over 15 min',
         ]);
         expect(legend?.querySelector('.map-legend__swatch--boundary')).not.toBeNull();
         expect(legend?.querySelector('.map-legend__swatch--facility')).not.toBeNull();
+        expect(legend?.querySelector('.map-legend__swatch--response-green')).not.toBeNull();
+        expect(legend?.querySelector('.map-legend__swatch--response-yellow')).not.toBeNull();
+        expect(legend?.querySelector('.map-legend__swatch--response-orange')).not.toBeNull();
+        expect(legend?.querySelector('.map-legend__swatch--response-red')).not.toBeNull();
     });
 });

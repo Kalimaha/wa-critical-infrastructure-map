@@ -1,1 +1,3 @@
 *.pmtiles*
+*.json
+*.geojson

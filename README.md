@@ -4,7 +4,6 @@
 
 An interactive web map of Western Australia's critical infrastructure. It is a study case, currently showing the state road network, local government (LGA) boundaries, police facilities, and an H3 grid of estimated police response times.
 
-<<<<<<< HEAD
 The map is a React + Vite + MapLibre GL app. Vector tiles are served as [PMTiles](https://docs.protomaps.com/pmtiles/) from S3. Data processing lives in Jupyter notebooks and a `uv`-managed Python environment.
 
 Live demo: [https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/dist/index.html](https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/dist/index.html)
@@ -12,7 +11,7 @@ Live demo: [https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.c
 Related notes:
 
 - [Documents](./docs/README.md)
-- [Notebooks](./notebooks/README.md)
+- [Notebooks](./notebooks/README.md) — including the canonical [H3 police response coverage](./notebooks/03-h3-police-response-coverage.ipynb) notebook (dense H3 res-7 polyfill; see notebooks README)
 
 ## Run locally
 
@@ -120,7 +119,3 @@ Layer groups toggled in the UI (`MapLayerGroup`): `roads`, `boundaries`, `facili
 Police facilities are loaded from PMTiles into a clustered GeoJSON source rather than rendered as a vector tile layer. Roads, LGA boundaries, and response coverage stay as vector PMTiles sources.
 
 If you change which GeoJSON properties are written into tiles, update the matching `tippecanoe` `-y` flags in the notebooks. The unit tests will fail if those attributes drift from `roadAttributes.ts`.
-=======
-* [Documents](./docs/README.md)
-* [Notebooks](./notebooks/README.md) — including the canonical [H3 police response coverage](./notebooks/03-h3-police-response-coverage.ipynb) notebook (dense H3 res-7 polyfill; see notebooks README)
->>>>>>> origin/emergency-coverage

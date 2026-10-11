@@ -69,6 +69,20 @@ describe('map layer control', () => {
     });
 });
 
+describe('data attribution', () => {
+    it('acknowledges Data WA and links to the catalogue', () => {
+        const container = renderMapView({ status: 'Ready', loading: false });
+        const attribution = container.querySelector('.map-attribution');
+        const link = attribution?.querySelector('a');
+
+        expect(attribution?.textContent).toBe('All raw data shown on this map is from Data WA.');
+        expect(link?.textContent).toBe('Data WA');
+        expect(link?.getAttribute('href')).toBe('https://data.wa.gov.au/');
+        expect(link?.getAttribute('target')).toBe('_blank');
+        expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
+    });
+});
+
 describe('map legend', () => {
     it('shows road classes, boundaries, facilities, and response coverage', () => {
         const container = renderMapView({ status: 'Ready', loading: false });

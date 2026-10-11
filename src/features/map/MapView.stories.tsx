@@ -103,7 +103,12 @@ function FeaturePopupPreview({ feature }: { feature: PopupFeature }) {
 }
 
 function LayerControlsPreview() {
-    const [visibility, setVisibility] = useState<MapLayerVisibility>({ roads: true, boundaries: true, facilities: true });
+    const [visibility, setVisibility] = useState<MapLayerVisibility>({
+        roads: true,
+        boundaries: true,
+        facilities: true,
+        responseCoverage: true,
+    });
 
     function handleVisibilityChange(group: MapLayerGroup, visible: boolean) {
         setVisibility(current => ({ ...current, [group]: visible }));
@@ -221,11 +226,13 @@ export const MapLayers: Story = {
         const roads = canvas.getByRole('checkbox', { name: 'Roads' }) as HTMLInputElement;
         const boundaries = canvas.getByRole('checkbox', { name: 'LGA boundaries' }) as HTMLInputElement;
         const facilities = canvas.getByRole('checkbox', { name: 'Police facilities' }) as HTMLInputElement;
+        const responseCoverage = canvas.getByRole('checkbox', { name: 'Response coverage' }) as HTMLInputElement;
 
         await expect(control.textContent).toContain('Map layers');
         await expect(roads.checked).toBe(true);
         await expect(boundaries.checked).toBe(true);
         await expect(facilities.checked).toBe(true);
+        await expect(responseCoverage.checked).toBe(true);
         await userEvent.click(roads);
         await expect(roads.checked).toBe(false);
         await expect(boundaries.checked).toBe(true);
@@ -233,6 +240,8 @@ export const MapLayers: Story = {
         await expect(boundaries.checked).toBe(false);
         await userEvent.click(facilities);
         await expect(facilities.checked).toBe(false);
+        await userEvent.click(responseCoverage);
+        await expect(responseCoverage.checked).toBe(false);
     },
 };
 

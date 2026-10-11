@@ -145,6 +145,22 @@ body {
     background: #0033a1;
 }
 
+.map-legend__swatch--response-green {
+    background: #2ca84b;
+}
+
+.map-legend__swatch--response-yellow {
+    background: #f4c542;
+}
+
+.map-legend__swatch--response-orange {
+    background: #ef7d32;
+}
+
+.map-legend__swatch--response-red {
+    background: #c83b3b;
+}
+
 .map-layer-control label {
     display: flex;
     align-items: center;

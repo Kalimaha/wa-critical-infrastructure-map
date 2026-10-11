@@ -11,11 +11,13 @@ import {
 } from './policeFacilities';
 import { ROAD_NETWORK_TYPE_ATTRIBUTE } from './roadAttributes';
 
-const PMTILES_URL = 'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/Road_network.pmtiles';
-const LGA_BOUNDARIES_PMTILES_URL = 'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/LGA_Boundaries.pmtiles';
-const POLICE_FACILITIES_PMTILES_URL = 'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/Police_Facilities.pmtiles';
+const PMTILES_BUCKET_URL = 'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com';
+const PMTILES_URL = `${import.meta.env.DEV ? '/pmtiles' : PMTILES_BUCKET_URL}/Road_network.pmtiles`;
+const LGA_BOUNDARIES_PMTILES_URL = `${import.meta.env.DEV ? '/pmtiles' : PMTILES_BUCKET_URL}/LGA_Boundaries.pmtiles`;
+const POLICE_FACILITIES_PMTILES_URL = `${import.meta.env.DEV ? '/pmtiles' : PMTILES_BUCKET_URL}/Police_Facilities.pmtiles`;
+const POLICE_RESPONSE_COVERAGE_PMTILES_URL = `${import.meta.env.DEV ? '/pmtiles' : PMTILES_BUCKET_URL}/Police_Response_Coverage_m6.pmtiles`;
 
-export type MapLayerGroup = 'roads' | 'boundaries' | 'facilities';
+export type MapLayerGroup = 'roads' | 'boundaries' | 'facilities' | 'responseCoverage';
 export type MapLayerVisibility = Record<MapLayerGroup, boolean>;
 
 const ROAD_WIDTH = 0.8;
@@ -120,13 +122,19 @@ function queryMapFeatures(map: MapLibreMap, geometry: QueryGeometry, layers: str
 export function usePmtilesMap() {
     const mapContainer = useRef<HTMLDivElement>(null);
     const mapRef = useRef<MapLibreMap | null>(null);
-    const layerGroupIdsRef = useRef<Record<MapLayerGroup, string[]>>({ roads: [], boundaries: [], facilities: [] });
+    const layerGroupIdsRef = useRef<Record<MapLayerGroup, string[]>>({
+        roads: [],
+        boundaries: [],
+        facilities: [],
+        responseCoverage: [],
+    });
     const [status, setStatus] = useState('Loading…');
     const [loading, setLoading] = useState(true);
     const [layerVisibility, setLayerVisibilityState] = useState<MapLayerVisibility>({
         roads: true,
         boundaries: true,
         facilities: true,
+        responseCoverage: true,
     });
 
     function setLayerVisibility(group: MapLayerGroup, visible: boolean) {
@@ -158,14 +166,18 @@ export function usePmtilesMap() {
                 const archive = new pmtiles.PMTiles(PMTILES_URL);
                 const boundaryArchive = new pmtiles.PMTiles(LGA_BOUNDARIES_PMTILES_URL);
                 const policeFacilitiesArchive = new pmtiles.PMTiles(POLICE_FACILITIES_PMTILES_URL);
+                const responseCoverageArchive = new pmtiles.PMTiles(POLICE_RESPONSE_COVERAGE_PMTILES_URL);
                 protocol.add(archive);
                 protocol.add(boundaryArchive);
-                const [[header, metadata], [boundaryHeader, boundaryMetadata], [facilityHeader, facilityMetadata]] = await Promise.all([
+                protocol.add(responseCoverageArchive);
+                const [[header, metadata], [boundaryHeader, boundaryMetadata], [facilityHeader, facilityMetadata], [responseCoverageHeader, responseCoverageMetadata]] = await Promise.all([
                     Promise.all([archive.getHeader(), archive.getMetadata()]),
                     Promise.all([boundaryArchive.getHeader(), boundaryArchive.getMetadata()]),
                     Promise.all([policeFacilitiesArchive.getHeader(), policeFacilitiesArchive.getMetadata()]),
+                    Promise.all([responseCoverageArchive.getHeader(), responseCoverageArchive.getMetadata()]),
                 ]);
                 const facilityLayerIds = getVectorLayers(facilityMetadata);
+                const responseCoverageLayerIds = getVectorLayers(responseCoverageMetadata);
                 const policeFacilityFeatures = await loadPoliceFacilityFeatures(
                     policeFacilitiesArchive,
                     facilityHeader,
@@ -187,8 +199,14 @@ export function usePmtilesMap() {
                         }],
                     },
                     bounds: [
-                        [Math.min(header.minLon, boundaryHeader.minLon), Math.min(header.minLat, boundaryHeader.minLat)],
-                        [Math.max(header.maxLon, boundaryHeader.maxLon), Math.max(header.maxLat, boundaryHeader.maxLat)],
+                        [
+                            Math.min(header.minLon, boundaryHeader.minLon, responseCoverageHeader.minLon),
+                            Math.min(header.minLat, boundaryHeader.minLat, responseCoverageHeader.minLat),
+                        ],
+                        [
+                            Math.max(header.maxLon, boundaryHeader.maxLon, responseCoverageHeader.maxLon),
+                            Math.max(header.maxLat, boundaryHeader.maxLat, responseCoverageHeader.maxLat),
+                        ],
                     ],
                     fitBoundsOptions: { padding: 20 },
                 });
@@ -204,6 +222,10 @@ export function usePmtilesMap() {
                             type: 'vector',
                             url: `pmtiles://${LGA_BOUNDARIES_PMTILES_URL}`,
                         });
+                        mapInstance.addSource('police-response-coverage', {
+                            type: 'vector',
+                            url: `pmtiles://${POLICE_RESPONSE_COVERAGE_PMTILES_URL}`,
+                        });
                         mapInstance.addSource('police-facilities-cluster', {
                             ...createPoliceFacilityClusterSource(policeFacilityFeatures),
                         });
@@ -214,6 +236,31 @@ export function usePmtilesMap() {
                         const roadStyleLayerIds: string[] = [];
                         const boundaryStyleLayerIds: string[] = [];
                         const facilityStyleLayerIds: string[] = [];
+                        const responseCoverageStyleLayerIds: string[] = [];
+
+                        responseCoverageLayerIds.forEach((id, index) => {
+                            const responseClassLayer = `police-response-coverage-${index}`;
+                            const responseClassStyles = [
+                                ['green', '#2ca84b'],
+                                ['yellow', '#f4c542'],
+                                ['orange', '#ef7d32'],
+                                ['red', '#c83b3b'],
+                            ] as const;
+
+                            responseClassStyles.forEach(([responseClass, color]) => {
+                                const layerId = `${responseClassLayer}-${responseClass}`;
+                                mapInstance.addLayer({
+                                    id: layerId,
+                                    type: 'fill',
+                                    source: 'police-response-coverage',
+                                    'source-layer': id,
+                                    filter: ['==', ['get', 'response_class'], responseClass],
+                                    paint: { 'fill-color': color, 'fill-opacity': 0.7 },
+                                });
+                                clickableLayers.push(layerId);
+                                responseCoverageStyleLayerIds.push(layerId);
+                            });
+                        });
 
                         boundaryLayers.forEach((id, index) => {
                             const fillLayer = `lga-boundary-${index}-hit-area`;
@@ -308,6 +355,7 @@ export function usePmtilesMap() {
                             roads: roadStyleLayerIds,
                             boundaries: boundaryStyleLayerIds,
                             facilities: facilityStyleLayerIds,
+                            responseCoverage: responseCoverageStyleLayerIds,
                         };
 
                         mapInstance.on('click', event => {
@@ -378,7 +426,12 @@ export function usePmtilesMap() {
             disposed = true;
             map?.remove();
             mapRef.current = null;
-            layerGroupIdsRef.current = { roads: [], boundaries: [], facilities: [] };
+            layerGroupIdsRef.current = {
+                roads: [],
+                boundaries: [],
+                facilities: [],
+                responseCoverage: [],
+            };
             removeProtocol?.();
         };
     }, []);

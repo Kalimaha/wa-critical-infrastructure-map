@@ -58,6 +58,22 @@ function MapView({
                             <span className="map-legend__swatch map-legend__swatch--facility" aria-hidden="true" />
                             <span>Police facilities</span>
                         </li>
+                        <li className="map-legend__item">
+                            <span className="map-legend__swatch map-legend__swatch--response-green" aria-hidden="true" />
+                            <span>Response coverage: under 5 min</span>
+                        </li>
+                        <li className="map-legend__item">
+                            <span className="map-legend__swatch map-legend__swatch--response-yellow" aria-hidden="true" />
+                            <span>Response coverage: 5–10 min</span>
+                        </li>
+                        <li className="map-legend__item">
+                            <span className="map-legend__swatch map-legend__swatch--response-orange" aria-hidden="true" />
+                            <span>Response coverage: 10–15 min</span>
+                        </li>
+                        <li className="map-legend__item">
+                            <span className="map-legend__swatch map-legend__swatch--response-red" aria-hidden="true" />
+                            <span>Response coverage: over 15 min</span>
+                        </li>
                     </ul>
                 </div>
                 {onLayerVisibilityChange && (
@@ -86,6 +102,14 @@ function MapView({
                                 onChange={event => onLayerVisibilityChange('facilities', event.currentTarget.checked)}
                             />
                             Police facilities
+                        </label>
+                        <label>
+                            <input
+                                type="checkbox"
+                                checked={layerVisibility?.responseCoverage ?? true}
+                                onChange={event => onLayerVisibilityChange('responseCoverage', event.currentTarget.checked)}
+                            />
+                            Response coverage
                         </label>
                     </div>
                 )}

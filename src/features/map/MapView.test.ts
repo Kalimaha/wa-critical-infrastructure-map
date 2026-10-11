@@ -48,7 +48,7 @@ describe('map layer control', () => {
             'Roads',
             'LGA boundaries',
             'Police facilities',
-            'Response coverage',
+            'Response coverage (WIP)',
         ]);
         expect(checkboxes.map(checkbox => checkbox.checked)).toEqual([true, false, true, false]);
     });

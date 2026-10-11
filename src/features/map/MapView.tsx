@@ -109,7 +109,7 @@ function MapView({
                                 checked={layerVisibility?.responseCoverage ?? true}
                                 onChange={event => onLayerVisibilityChange('responseCoverage', event.currentTarget.checked)}
                             />
-                            Response coverage
+                            Response coverage (WIP)
                         </label>
                     </div>
                 )}

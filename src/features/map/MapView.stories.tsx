@@ -226,7 +226,7 @@ export const MapLayers: Story = {
         const roads = canvas.getByRole('checkbox', { name: 'Roads' }) as HTMLInputElement;
         const boundaries = canvas.getByRole('checkbox', { name: 'LGA boundaries' }) as HTMLInputElement;
         const facilities = canvas.getByRole('checkbox', { name: 'Police facilities' }) as HTMLInputElement;
-        const responseCoverage = canvas.getByRole('checkbox', { name: 'Response coverage' }) as HTMLInputElement;
+        const responseCoverage = canvas.getByRole('checkbox', { name: 'Response coverage (WIP)' }) as HTMLInputElement;
 
         await expect(control.textContent).toContain('Map layers');
         await expect(roads.checked).toBe(true);

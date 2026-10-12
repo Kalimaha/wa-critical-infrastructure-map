@@ -104,6 +104,7 @@ describe('map legend', () => {
             'Response coverage: 5–10 min',
             'Response coverage: 10–15 min',
             'Response coverage: over 15 min',
+            'Response coverage: unreachable',
         ]);
         expect(legend?.querySelector('.map-legend__swatch--boundary')).not.toBeNull();
         expect(legend?.querySelector('.map-legend__swatch--facility')).not.toBeNull();
@@ -111,5 +112,6 @@ describe('map legend', () => {
         expect(legend?.querySelector('.map-legend__swatch--response-yellow')).not.toBeNull();
         expect(legend?.querySelector('.map-legend__swatch--response-orange')).not.toBeNull();
         expect(legend?.querySelector('.map-legend__swatch--response-red')).not.toBeNull();
+        expect(legend?.querySelector('.map-legend__swatch--response-unreachable')).not.toBeNull();
     });
 });

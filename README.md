@@ -32,10 +32,33 @@ Useful frontend commands:
 | --- | --- |
 | `npm run dev` | Vite dev server with the PMTiles proxy |
 | `npm run build` | Typecheck, then write `dist/` |
+| `npm run deploy` | Sync local `dist/` to the S3 prod prefix (requires AWS CLI + credentials) |
+| `npm run deploy:prod` | `npm run build` then `npm run deploy` |
 | `npm run preview` | Serve the production build locally |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint with `--max-warnings 0` |
 | `npm run storybook` | Storybook on port 6006 |
+
+## Deploy
+
+Production is the static site under the `dist/` prefix of the `wa-critical-infrastructure-map` bucket in `ap-southeast-2`:
+
+[https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/dist/index.html](https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/dist/index.html)
+
+`npm run deploy` runs `aws s3 sync` of `./dist/` to `s3://wa-critical-infrastructure-map/dist/` with `--delete`. It does **not** touch PMTiles or other objects at the bucket root.
+
+**Cloud Agent:** ask to “build and deploy”. The agent runs `npm run deploy:prod`. `deploy` installs AWS CLI via [`scripts/install-aws-cli.sh`](scripts/install-aws-cli.sh) if needed. The Cursor environment must provide secrets `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_DEFAULT_REGION` (`ap-southeast-2`).
+
+**Laptop:**
+
+```bash
+# one-time: install AWS CLI v2, then authenticate
+aws configure   # or: aws sso login
+
+npm run deploy:prod
+```
+
+IAM needs at least `s3:ListBucket` on the bucket and `s3:PutObject` / `s3:DeleteObject` on the `dist/` prefix.
 
 ## Tests
 

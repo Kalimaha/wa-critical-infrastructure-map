@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run typecheck && vite build",
+    "deploy": "bash scripts/install-aws-cli.sh && aws s3 sync dist/ s3://wa-critical-infrastructure-map/dist/ --region ap-southeast-2 --delete",
+    "deploy:prod": "npm run build && npm run deploy",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",

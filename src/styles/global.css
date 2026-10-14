@@ -98,11 +98,41 @@ body {
     backdrop-filter: blur(2px);
 }
 
-.map-layer-control__title {
-    margin: 0 0 6px;
+.map-layer-control__title,
+.map-legend__title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0;
     font-size: 12px;
     font-weight: 700;
     line-height: 1.2;
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+}
+
+.map-layer-control__title::-webkit-details-marker,
+.map-legend__title::-webkit-details-marker {
+    display: none;
+}
+
+.map-panel__chevron {
+    flex-shrink: 0;
+    font-size: 10px;
+    color: #5b6762;
+    transition: transform 0.15s ease;
+}
+
+.map-layer-control[open] > .map-layer-control__title,
+.map-legend[open] > .map-legend__title {
+    margin-bottom: 6px;
+}
+
+.map-layer-control[open] .map-panel__chevron,
+.map-legend[open] .map-panel__chevron {
+    transform: rotate(180deg);
 }
 
 .map-legend {
@@ -120,11 +150,6 @@ body {
     color: #242424;
     font: 12px/1.4 system-ui, sans-serif;
     backdrop-filter: blur(2px);
-}
-
-.map-legend__title {
-    margin-bottom: 6px;
-    font-weight: 700;
 }
 
 .map-legend__list {

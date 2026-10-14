@@ -228,13 +228,14 @@ export const MapLayers: Story = {
     render: () => <LayerControlsPreview />,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const control = canvas.getByRole('group', { name: 'Map layers' });
+        const control = canvas.getByRole('group', { name: 'Map layers' }) as HTMLDetailsElement;
         const roads = canvas.getByRole('checkbox', { name: 'Roads' }) as HTMLInputElement;
         const boundaries = canvas.getByRole('checkbox', { name: 'LGA boundaries' }) as HTMLInputElement;
         const facilities = canvas.getByRole('checkbox', { name: 'Police facilities' }) as HTMLInputElement;
         const responseCoverage = canvas.getByRole('checkbox', { name: 'Response coverage (WIP)' }) as HTMLInputElement;
 
         await expect(control.textContent).toContain('Map layers');
+        await expect(control.open).toBe(true);
         await expect(roads.checked).toBe(true);
         await expect(boundaries.checked).toBe(true);
         await expect(facilities.checked).toBe(true);
@@ -248,6 +249,11 @@ export const MapLayers: Story = {
         await expect(facilities.checked).toBe(false);
         await userEvent.click(responseCoverage);
         await expect(responseCoverage.checked).toBe(false);
+
+        await userEvent.click(canvas.getByText('Map layers'));
+        await expect(control.open).toBe(false);
+        await userEvent.click(canvas.getByText('Map layers'));
+        await expect(control.open).toBe(true);
     },
 };
 
@@ -255,10 +261,11 @@ export const Legend: Story = {
     render: () => <MapView mapContainer={null} status="Vector layers ready" loading={false} />,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const legend = canvas.getByLabelText('Road network legend');
+        const legend = canvas.getByLabelText('Road network legend') as HTMLDetailsElement;
         const entries = within(legend).getAllByRole('listitem');
 
         await expect(within(legend).getByText('Legend')).toBeTruthy();
+        await expect(legend.open).toBe(true);
         await expect(entries.map(entry => entry.textContent?.trim())).toEqual([
             'crossover',
             'local road',
@@ -274,6 +281,11 @@ export const Legend: Story = {
             'Response coverage: over 15 min',
             'Response coverage: unreachable',
         ]);
+
+        await userEvent.click(within(legend).getByText('Legend'));
+        await expect(legend.open).toBe(false);
+        await userEvent.click(within(legend).getByText('Legend'));
+        await expect(legend.open).toBe(true);
     },
 };
 

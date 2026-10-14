@@ -175,6 +175,10 @@ body {
     background: #c83b3b;
 }
 
+.map-legend__swatch--response-unreachable {
+    background: #424242;
+}
+
 .map-layer-control label {
     display: flex;
     align-items: center;

@@ -272,6 +272,7 @@ export const Legend: Story = {
             'Response coverage: 5–10 min',
             'Response coverage: 10–15 min',
             'Response coverage: over 15 min',
+            'Response coverage: unreachable',
         ]);
     },
 };

@@ -253,6 +253,7 @@ export function usePmtilesMap() {
                                         ['yellow', '#f4c542'],
                                         ['orange', '#ef7d32'],
                                         ['red', '#c83b3b'],
+                                        ['unreachable', '#424242'],
                                     ] as const;
 
                                     responseClassStyles.forEach(([responseClass, color]) => {

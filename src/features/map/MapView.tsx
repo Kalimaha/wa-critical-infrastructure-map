@@ -74,6 +74,10 @@ function MapView({
                             <span className="map-legend__swatch map-legend__swatch--response-red" aria-hidden="true" />
                             <span>Response coverage: over 15 min</span>
                         </li>
+                        <li className="map-legend__item">
+                            <span className="map-legend__swatch map-legend__swatch--response-unreachable" aria-hidden="true" />
+                            <span>Response coverage: unreachable</span>
+                        </li>
                     </ul>
                 </div>
                 {onLayerVisibilityChange && (

@@ -43,6 +43,7 @@ describe('map layer control', () => {
         const checkboxes = [...container.querySelectorAll<HTMLInputElement>('.map-layer-control input')];
 
         expect(control?.textContent).toContain('Map layers');
+        expect((control as HTMLDetailsElement | null)?.open).toBe(true);
         expect(checkboxes).toHaveLength(4);
         expect(checkboxes.map(checkbox => checkbox.parentElement?.textContent?.trim())).toEqual([
             'Roads',
@@ -51,6 +52,23 @@ describe('map layer control', () => {
             'Response coverage (WIP)',
         ]);
         expect(checkboxes.map(checkbox => checkbox.checked)).toEqual([true, false, true, false]);
+    });
+
+    it('collapses and expands when the title is clicked', () => {
+        const container = renderMapView({
+            status: 'Ready',
+            loading: false,
+            layerVisibility: visibility,
+            onLayerVisibilityChange: vi.fn(),
+        });
+        const control = container.querySelector('.map-layer-control') as HTMLDetailsElement;
+        const summary = control.querySelector('summary');
+
+        expect(control.open).toBe(true);
+        act(() => summary?.click());
+        expect(control.open).toBe(false);
+        act(() => summary?.click());
+        expect(control.open).toBe(true);
     });
 
     it('notifies the parent when response coverage is toggled', () => {
@@ -86,11 +104,12 @@ describe('data attribution', () => {
 describe('map legend', () => {
     it('shows road classes, boundaries, facilities, and response coverage', () => {
         const container = renderMapView({ status: 'Ready', loading: false });
-        const legend = container.querySelector('[aria-label="Road network legend"]');
+        const legend = container.querySelector('[aria-label="Road network legend"]') as HTMLDetailsElement | null;
         const entries = [...container.querySelectorAll('.map-legend__item')]
             .map(entry => entry.textContent?.trim());
 
-        expect(legend?.querySelector('.map-legend__title')?.textContent).toBe('Legend');
+        expect(legend?.querySelector('.map-legend__title')?.textContent).toContain('Legend');
+        expect(legend?.open).toBe(true);
         expect(entries).toEqual([
             'crossover',
             'local road',
@@ -113,5 +132,17 @@ describe('map legend', () => {
         expect(legend?.querySelector('.map-legend__swatch--response-orange')).not.toBeNull();
         expect(legend?.querySelector('.map-legend__swatch--response-red')).not.toBeNull();
         expect(legend?.querySelector('.map-legend__swatch--response-unreachable')).not.toBeNull();
+    });
+
+    it('collapses and expands when the title is clicked', () => {
+        const container = renderMapView({ status: 'Ready', loading: false });
+        const legend = container.querySelector('.map-legend') as HTMLDetailsElement;
+        const summary = legend.querySelector('summary');
+
+        expect(legend.open).toBe(true);
+        act(() => summary?.click());
+        expect(legend.open).toBe(false);
+        act(() => summary?.click());
+        expect(legend.open).toBe(true);
     });
 });

@@ -1,4 +1,5 @@
-import type { Ref } from 'react';
+import type { Ref, SyntheticEvent } from 'react';
+import { useState } from 'react';
 import { ROAD_NETWORK_STYLES, type MapLayerGroup, type MapLayerVisibility } from './usePmtilesMap';
 
 export interface MapViewProps {
@@ -9,6 +10,14 @@ export interface MapViewProps {
     onLayerVisibilityChange?: (group: MapLayerGroup, visible: boolean) => void;
 }
 
+/** Open on desktop; collapsed on narrow viewports so the map stays readable on mobile. */
+function getInitialPanelOpen() {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+        return true;
+    }
+    return window.matchMedia('(min-width: 768px)').matches;
+}
+
 function MapView({
     mapContainer,
     status,
@@ -16,10 +25,20 @@ function MapView({
     layerVisibility,
     onLayerVisibilityChange,
 }: MapViewProps) {
+    const [legendOpen, setLegendOpen] = useState(getInitialPanelOpen);
+    const [layersOpen, setLayersOpen] = useState(getInitialPanelOpen);
     const roadLegendEntries = Object.entries(ROAD_NETWORK_STYLES).map(([label, style]) => ({
         label,
         color: style.color,
     }));
+
+    function handleLegendToggle(event: SyntheticEvent<HTMLDetailsElement>) {
+        setLegendOpen(event.currentTarget.open);
+    }
+
+    function handleLayersToggle(event: SyntheticEvent<HTMLDetailsElement>) {
+        setLayersOpen(event.currentTarget.open);
+    }
 
     return (
         <div className="container-fluid px-0 map-app">
@@ -41,8 +60,16 @@ function MapView({
                         <span>{status}</span>
                     </div>
                 )}
-                <div className="map-legend" aria-label="Road network legend">
-                    <div className="map-legend__title">Legend</div>
+                <details
+                    className="map-legend"
+                    aria-label="Road network legend"
+                    open={legendOpen}
+                    onToggle={handleLegendToggle}
+                >
+                    <summary className="map-legend__title">
+                        Legend
+                        <i className="fa-solid fa-chevron-down map-panel__chevron" aria-hidden="true" />
+                    </summary>
                     <ul className="map-legend__list">
                         {roadLegendEntries.map(({ label, color }) => (
                             <li key={label} className="map-legend__item">
@@ -79,10 +106,20 @@ function MapView({
                             <span>Response coverage: unreachable</span>
                         </li>
                     </ul>
-                </div>
+                </details>
                 {onLayerVisibilityChange && (
-                    <div className="map-layer-control" role="group" aria-labelledby="map-layers-title" aria-disabled={loading}>
-                        <div id="map-layers-title" className="map-layer-control__title">Map layers</div>
+                    <details
+                        className="map-layer-control"
+                        role="group"
+                        aria-labelledby="map-layers-title"
+                        aria-disabled={loading}
+                        open={layersOpen}
+                        onToggle={handleLayersToggle}
+                    >
+                        <summary id="map-layers-title" className="map-layer-control__title">
+                            Map layers
+                            <i className="fa-solid fa-chevron-down map-panel__chevron" aria-hidden="true" />
+                        </summary>
                         <label>
                             <input
                                 type="checkbox"
@@ -115,7 +152,7 @@ function MapView({
                             />
                             Response coverage (WIP)
                         </label>
-                    </div>
+                    </details>
                 )}
             </main>
             <footer className="map-attribution">

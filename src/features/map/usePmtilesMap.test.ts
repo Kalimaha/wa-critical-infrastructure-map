@@ -1,11 +1,34 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
     applyLayerGroupVisibility,
+    getPoliceResponseCoveragePmtilesUrl,
     getRoadNetworkColor,
     getRoadNetworkColorExpression,
     getRoadNetworkWidth,
     getRoadNetworkWidthExpression,
+    POLICE_RESPONSE_COVERAGE_PMTILES_FILE,
 } from './usePmtilesMap';
+
+describe('police response coverage tiles', () => {
+    it('loads the R5 statewide archive, not the older M6 baseline', () => {
+        expect(POLICE_RESPONSE_COVERAGE_PMTILES_FILE).toBe('Police_Response_Coverage_r5.pmtiles');
+        expect(POLICE_RESPONSE_COVERAGE_PMTILES_FILE).not.toContain('_m6');
+
+        const url = getPoliceResponseCoveragePmtilesUrl(
+            'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com',
+        );
+        expect(url).toBe(
+            'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/Police_Response_Coverage_r5.pmtiles',
+        );
+        expect(url).not.toContain('Police_Response_Coverage_m6.pmtiles');
+    });
+
+    it('keeps the configured origin when building the coverage URL', () => {
+        expect(getPoliceResponseCoveragePmtilesUrl('/pmtiles')).toBe(
+            '/pmtiles/Police_Response_Coverage_r5.pmtiles',
+        );
+    });
+});
 
 describe('map layer visibility', () => {
     it('toggles every style layer in a group together', () => {

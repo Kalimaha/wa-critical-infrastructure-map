@@ -20,7 +20,14 @@ const PMTILES_ORIGIN = import.meta.env.DEV && !import.meta.env.VITEST
 const PMTILES_URL = `${PMTILES_ORIGIN}/Road_network.pmtiles`;
 const LGA_BOUNDARIES_PMTILES_URL = `${PMTILES_ORIGIN}/LGA_Boundaries.pmtiles`;
 const POLICE_FACILITIES_PMTILES_URL = `${PMTILES_ORIGIN}/Police_Facilities.pmtiles`;
-const POLICE_RESPONSE_COVERAGE_PMTILES_URL = `${PMTILES_ORIGIN}/Police_Response_Coverage_m6.pmtiles`;
+/** Statewide R5 response-coverage archive on the S3 bucket (not the older M6 baseline). */
+export const POLICE_RESPONSE_COVERAGE_PMTILES_FILE = 'Police_Response_Coverage_r5.pmtiles';
+
+export function getPoliceResponseCoveragePmtilesUrl(origin: string = PMTILES_ORIGIN): string {
+    return `${origin}/${POLICE_RESPONSE_COVERAGE_PMTILES_FILE}`;
+}
+
+const POLICE_RESPONSE_COVERAGE_PMTILES_URL = getPoliceResponseCoveragePmtilesUrl();
 
 export type MapLayerGroup = 'roads' | 'boundaries' | 'facilities' | 'responseCoverage';
 export type MapLayerVisibility = Record<MapLayerGroup, boolean>;

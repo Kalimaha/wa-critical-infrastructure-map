@@ -1,3 +1,6 @@
 *.pmtiles*
 *.json
 *.geojson
+*.duckdb*
+cache/
+*.fgb

@@ -167,6 +167,12 @@ body {
     text-transform: capitalize;
 }
 
+.map-legend__empty {
+    margin: 0;
+    color: #6b6b6b;
+    font-style: italic;
+}
+
 .map-legend__swatch {
     display: inline-block;
     width: 16px;

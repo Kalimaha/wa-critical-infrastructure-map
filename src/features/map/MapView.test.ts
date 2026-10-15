@@ -134,6 +134,41 @@ describe('map legend', () => {
         expect(legend?.querySelector('.map-legend__swatch--response-unreachable')).not.toBeNull();
     });
 
+    it('only shows entries for visible layers', () => {
+        const container = renderMapView({
+            status: 'Ready',
+            loading: false,
+            layerVisibility: { roads: false, boundaries: true, facilities: true, responseCoverage: false },
+            onLayerVisibilityChange: vi.fn(),
+        });
+        const entries = [...container.querySelectorAll('.map-legend__item')]
+            .map(entry => entry.textContent?.trim());
+
+        expect(entries).toEqual(['LGA boundaries', 'Police facilities']);
+    });
+
+    it('updates when a layer is toggled', () => {
+        const props = {
+            status: 'Ready',
+            loading: false,
+            layerVisibility: { roads: false, boundaries: false, facilities: false, responseCoverage: true },
+            onLayerVisibilityChange: vi.fn(),
+        };
+        const container = renderMapView(props);
+        const responseEntries = () => [...container.querySelectorAll('.map-legend__item')]
+            .filter(entry => entry.textContent?.startsWith('Response coverage'));
+
+        expect(responseEntries()).toHaveLength(5);
+
+        act(() => roots[0].render(createElement(MapView, {
+            ...props,
+            layerVisibility: { ...props.layerVisibility, responseCoverage: false },
+        })));
+
+        expect(responseEntries()).toHaveLength(0);
+        expect(container.querySelector('.map-legend__empty')?.textContent).toBe('No layers visible');
+    });
+
     it('collapses and expands when the title is clicked', () => {
         const container = renderMapView({ status: 'Ready', loading: false });
         const legend = container.querySelector('.map-legend') as HTMLDetailsElement;

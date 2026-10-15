@@ -10,6 +10,27 @@ export interface MapViewProps {
     onLayerVisibilityChange?: (group: MapLayerGroup, visible: boolean) => void;
 }
 
+interface LegendEntry {
+    label: string;
+    color?: string;
+    swatchModifier?: string;
+}
+
+const LEGEND_ENTRIES: Record<MapLayerGroup, LegendEntry[]> = {
+    roads: Object.entries(ROAD_NETWORK_STYLES).map(([label, style]) => ({ label, color: style.color })),
+    boundaries: [{ label: 'LGA boundaries', swatchModifier: 'boundary' }],
+    facilities: [{ label: 'Police facilities', swatchModifier: 'facility' }],
+    responseCoverage: [
+        { label: 'Response coverage: under 5 min', swatchModifier: 'response-green' },
+        { label: 'Response coverage: 5–10 min', swatchModifier: 'response-yellow' },
+        { label: 'Response coverage: 10–15 min', swatchModifier: 'response-orange' },
+        { label: 'Response coverage: over 15 min', swatchModifier: 'response-red' },
+        { label: 'Response coverage: unreachable', swatchModifier: 'response-unreachable' },
+    ],
+};
+
+const LEGEND_GROUP_ORDER: MapLayerGroup[] = ['roads', 'boundaries', 'facilities', 'responseCoverage'];
+
 /** Open on desktop; collapsed on narrow viewports so the map stays readable on mobile. */
 function getInitialPanelOpen() {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
@@ -27,10 +48,9 @@ function MapView({
 }: MapViewProps) {
     const [legendOpen, setLegendOpen] = useState(getInitialPanelOpen);
     const [layersOpen, setLayersOpen] = useState(getInitialPanelOpen);
-    const roadLegendEntries = Object.entries(ROAD_NETWORK_STYLES).map(([label, style]) => ({
-        label,
-        color: style.color,
-    }));
+    const legendEntries = LEGEND_GROUP_ORDER
+        .filter(group => layerVisibility?.[group] ?? true)
+        .flatMap(group => LEGEND_ENTRIES[group]);
 
     function handleLegendToggle(event: SyntheticEvent<HTMLDetailsElement>) {
         setLegendOpen(event.currentTarget.open);
@@ -70,42 +90,24 @@ function MapView({
                         Legend
                         <i className="fa-solid fa-chevron-down map-panel__chevron" aria-hidden="true" />
                     </summary>
-                    <ul className="map-legend__list">
-                        {roadLegendEntries.map(({ label, color }) => (
-                            <li key={label} className="map-legend__item">
-                                <span className="map-legend__swatch" style={{ backgroundColor: color }} aria-hidden="true" />
-                                <span>{label}</span>
-                            </li>
-                        ))}
-                        <li className="map-legend__item">
-                            <span className="map-legend__swatch map-legend__swatch--boundary" aria-hidden="true" />
-                            <span>LGA boundaries</span>
-                        </li>
-                        <li className="map-legend__item">
-                            <span className="map-legend__swatch map-legend__swatch--facility" aria-hidden="true" />
-                            <span>Police facilities</span>
-                        </li>
-                        <li className="map-legend__item">
-                            <span className="map-legend__swatch map-legend__swatch--response-green" aria-hidden="true" />
-                            <span>Response coverage: under 5 min</span>
-                        </li>
-                        <li className="map-legend__item">
-                            <span className="map-legend__swatch map-legend__swatch--response-yellow" aria-hidden="true" />
-                            <span>Response coverage: 5–10 min</span>
-                        </li>
-                        <li className="map-legend__item">
-                            <span className="map-legend__swatch map-legend__swatch--response-orange" aria-hidden="true" />
-                            <span>Response coverage: 10–15 min</span>
-                        </li>
-                        <li className="map-legend__item">
-                            <span className="map-legend__swatch map-legend__swatch--response-red" aria-hidden="true" />
-                            <span>Response coverage: over 15 min</span>
-                        </li>
-                        <li className="map-legend__item">
-                            <span className="map-legend__swatch map-legend__swatch--response-unreachable" aria-hidden="true" />
-                            <span>Response coverage: unreachable</span>
-                        </li>
-                    </ul>
+                    {legendEntries.length > 0 ? (
+                        <ul className="map-legend__list">
+                            {legendEntries.map(({ label, color, swatchModifier }) => (
+                                <li key={label} className="map-legend__item">
+                                    <span
+                                        className={swatchModifier
+                                            ? `map-legend__swatch map-legend__swatch--${swatchModifier}`
+                                            : 'map-legend__swatch'}
+                                        style={color ? { backgroundColor: color } : undefined}
+                                        aria-hidden="true"
+                                    />
+                                    <span>{label}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="map-legend__empty">No layers visible</p>
+                    )}
                 </details>
                 {onLayerVisibilityChange && (
                     <details

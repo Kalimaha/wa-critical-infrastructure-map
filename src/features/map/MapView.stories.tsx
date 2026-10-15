@@ -112,7 +112,7 @@ function LayerControlsPreview() {
         roads: true,
         boundaries: true,
         facilities: true,
-        responseCoverage: true,
+        responseCoverage: false,
     });
 
     function handleVisibilityChange(group: MapLayerGroup, visible: boolean) {
@@ -151,9 +151,11 @@ export const Ready: Story = {
             'Police_Response_Coverage_r5.pmtiles',
         );
         await expect(canvas.getByRole('heading', { name: /WA Critical Infrastructure Map/ })).toBeTruthy();
-        await expect(canvas.getByRole('group', { name: 'Map layers' })).toBeTruthy();
+        await expect(canvas.getByRole('group', { name: 'Layers' })).toBeTruthy();
         await expect(canvas.getByRole('checkbox', { name: 'Roads' })).toBeTruthy();
-        await expect(canvas.getByRole('checkbox', { name: 'Response coverage (WIP)' })).toBeTruthy();
+        const responseCoverage = canvas.getByRole('checkbox', { name: 'Response coverage' }) as HTMLInputElement;
+        await expect(responseCoverage).toBeTruthy();
+        await expect(responseCoverage.checked).toBe(false);
         await expect(canvas.getByLabelText('Road network legend')).toBeTruthy();
         await waitFor(() => {
             const status = canvas.queryByRole('status');
@@ -237,18 +239,18 @@ export const MapLayers: Story = {
     render: () => <LayerControlsPreview />,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const control = canvas.getByRole('group', { name: 'Map layers' }) as HTMLDetailsElement;
+        const control = canvas.getByRole('group', { name: 'Layers' }) as HTMLDetailsElement;
         const roads = canvas.getByRole('checkbox', { name: 'Roads' }) as HTMLInputElement;
         const boundaries = canvas.getByRole('checkbox', { name: 'LGA boundaries' }) as HTMLInputElement;
         const facilities = canvas.getByRole('checkbox', { name: 'Police facilities' }) as HTMLInputElement;
-        const responseCoverage = canvas.getByRole('checkbox', { name: 'Response coverage (WIP)' }) as HTMLInputElement;
+        const responseCoverage = canvas.getByRole('checkbox', { name: 'Response coverage' }) as HTMLInputElement;
 
-        await expect(control.textContent).toContain('Map layers');
+        await expect(control.textContent).toContain('Layers');
         await expect(control.open).toBe(true);
         await expect(roads.checked).toBe(true);
         await expect(boundaries.checked).toBe(true);
         await expect(facilities.checked).toBe(true);
-        await expect(responseCoverage.checked).toBe(true);
+        await expect(responseCoverage.checked).toBe(false);
         await userEvent.click(roads);
         await expect(roads.checked).toBe(false);
         await expect(boundaries.checked).toBe(true);
@@ -257,11 +259,11 @@ export const MapLayers: Story = {
         await userEvent.click(facilities);
         await expect(facilities.checked).toBe(false);
         await userEvent.click(responseCoverage);
-        await expect(responseCoverage.checked).toBe(false);
+        await expect(responseCoverage.checked).toBe(true);
 
-        await userEvent.click(canvas.getByText('Map layers'));
+        await userEvent.click(canvas.getByText('Layers'));
         await expect(control.open).toBe(false);
-        await userEvent.click(canvas.getByText('Map layers'));
+        await userEvent.click(canvas.getByText('Layers'));
         await expect(control.open).toBe(true);
     },
 };
@@ -311,7 +313,7 @@ export const PoliceFacilitiesClusters: Story = {
         const canvas = within(canvasElement);
         // Same as Ready: assert facilities control without waiting on PMTiles.
         await expect(canvas.getByRole('checkbox', { name: 'Police facilities' })).toBeTruthy();
-        await expect(canvas.getByRole('group', { name: 'Map layers' })).toBeTruthy();
+        await expect(canvas.getByRole('group', { name: 'Layers' })).toBeTruthy();
         await expect(canvas.getByRole('heading', { name: /WA Critical Infrastructure Map/ })).toBeTruthy();
         await waitFor(() => {
             const status = canvas.queryByRole('status');

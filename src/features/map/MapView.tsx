@@ -117,7 +117,7 @@ function MapView({
                         onToggle={handleLayersToggle}
                     >
                         <summary id="map-layers-title" className="map-layer-control__title">
-                            Map layers
+                            Layers
                             <i className="fa-solid fa-chevron-down map-panel__chevron" aria-hidden="true" />
                         </summary>
                         <label>
@@ -150,7 +150,7 @@ function MapView({
                                 checked={layerVisibility?.responseCoverage ?? true}
                                 onChange={event => onLayerVisibilityChange('responseCoverage', event.currentTarget.checked)}
                             />
-                            Response coverage (WIP)
+                            Response coverage
                         </label>
                     </details>
                 )}

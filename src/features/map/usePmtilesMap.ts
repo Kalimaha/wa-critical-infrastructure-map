@@ -32,6 +32,13 @@ const POLICE_RESPONSE_COVERAGE_PMTILES_URL = getPoliceResponseCoveragePmtilesUrl
 export type MapLayerGroup = 'roads' | 'boundaries' | 'facilities' | 'responseCoverage';
 export type MapLayerVisibility = Record<MapLayerGroup, boolean>;
 
+export const DEFAULT_LAYER_VISIBILITY: MapLayerVisibility = {
+    roads: true,
+    boundaries: true,
+    facilities: true,
+    responseCoverage: false,
+};
+
 const ROAD_WIDTH = 0.8;
 
 export const ROAD_NETWORK_STYLES = {
@@ -142,12 +149,12 @@ export function usePmtilesMap() {
     });
     const [status, setStatus] = useState('Loading…');
     const [loading, setLoading] = useState(true);
-    const [layerVisibility, setLayerVisibilityState] = useState<MapLayerVisibility>({
-        roads: true,
-        boundaries: true,
-        facilities: true,
-        responseCoverage: true,
-    });
+    const [layerVisibility, setLayerVisibilityState] = useState<MapLayerVisibility>(DEFAULT_LAYER_VISIBILITY);
+    const layerVisibilityRef = useRef(layerVisibility);
+
+    useEffect(() => {
+        layerVisibilityRef.current = layerVisibility;
+    }, [layerVisibility]);
 
     function setLayerVisibility(group: MapLayerGroup, visible: boolean) {
         const mapInstance = mapRef.current;
@@ -281,6 +288,12 @@ export function usePmtilesMap() {
                                     ...layerGroupIdsRef.current,
                                     responseCoverage: [...responseCoverageStyleLayerIds],
                                 };
+                                // Layers are visible when added; honour the current toggle (off by default).
+                                applyLayerGroupVisibility(
+                                    mapInstance,
+                                    responseCoverageStyleLayerIds,
+                                    layerVisibilityRef.current.responseCoverage,
+                                );
                             } catch (coverageError) {
                                 console.error(coverageError);
                             }

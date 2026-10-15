@@ -42,14 +42,14 @@ describe('map layer control', () => {
         const control = container.querySelector('[role="group"][aria-labelledby="map-layers-title"]');
         const checkboxes = [...container.querySelectorAll<HTMLInputElement>('.map-layer-control input')];
 
-        expect(control?.textContent).toContain('Map layers');
+        expect(control?.textContent).toContain('Layers');
         expect((control as HTMLDetailsElement | null)?.open).toBe(true);
         expect(checkboxes).toHaveLength(4);
         expect(checkboxes.map(checkbox => checkbox.parentElement?.textContent?.trim())).toEqual([
             'Roads',
             'LGA boundaries',
             'Police facilities',
-            'Response coverage (WIP)',
+            'Response coverage',
         ]);
         expect(checkboxes.map(checkbox => checkbox.checked)).toEqual([true, false, true, false]);
     });

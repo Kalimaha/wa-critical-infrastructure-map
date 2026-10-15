@@ -2,3 +2,5 @@
 *.json
 *.geojson
 *.duckdb*
+cache/
+*.fgb

@@ -3,3 +3,4 @@ dist/
 storybook-static/
 .vite/
 .aider*
+__pycache__/

@@ -15,6 +15,7 @@ dependencies = [
     "jinja2>=3.1.6",
     "pmtiles>=3.8.1",
     "pyarrow>=25.0.1",
+    "scipy>=1.18.1",
 ]
 
 [project.scripts]
@@ -23,3 +24,11 @@ wa-critical-infrastructure-map = "wa_critical_infrastructure_map:main"
 [build-system]
 requires = ["uv_build>=0.12.18,<0.13.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

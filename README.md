@@ -102,7 +102,11 @@ uv sync
 uv run python -m jupyter notebook
 ```
 
-`uv sync` installs DuckDB, GeoPandas, H3, PyArrow, the Python `pmtiles` package, and Jupyter (`ipykernel`). The `src/wa_critical_infrastructure_map` package is a stub so `uv` can resolve the project; the real processing is in notebooks.
+`uv sync` installs DuckDB, GeoPandas, H3, PyArrow, the Python `pmtiles` package, Jupyter (`ipykernel`), and pytest. The response-coverage pipeline lives in `src/wa_critical_infrastructure_map/response_coverage.py`; notebook 03 runs it step by step. Run its tests with:
+
+```bash
+uv run pytest
+```
 
 [tippecanoe](https://github.com/felt/tippecanoe) is a separate system binary. Notebooks that write PMTiles fail if it is not on `PATH`.
 
@@ -111,7 +115,7 @@ uv run python -m jupyter notebook
 | Path | Role |
 | --- | --- |
 | `data/raw/` | Source GeoJSON / shapefiles from [Data WA](https://data.wa.gov.au/). Gitignored; see [`data/raw/README.md`](data/raw/README.md). |
-| `data/processed/` | Generated GeoJSON and PMTiles. Gitignored. |
+| `data/processed/` | Generated PMTiles, the DuckDB working database, and the cached H3 grid (`cache/`). Gitignored. |
 | `notebooks/02-geojson-to-pmtiles.ipynb` | Convert roads, LGA boundaries, and police facilities to PMTiles. |
 | `notebooks/03-h3-police-response-coverage.ipynb` | Build the H3 response-coverage grid and export PMTiles. |
 

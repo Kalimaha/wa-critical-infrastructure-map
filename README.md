@@ -117,7 +117,7 @@ uv run python -m jupyter notebook
 
 Road source data does not include travel speeds. The coverage notebook uses a configurable speed profile; treat those times as a study estimate, not an operational SLA.
 
-### Response coverage (WIP) — known limitations
+### Response coverage — known limitations
 
 - **Red** means travel time **>15 min** **or** unreachable on the modelled network.
 - Cells can be orange/red even when no road sits inside the hex: travel time is computed via nearest-road snap to the cell centroid.

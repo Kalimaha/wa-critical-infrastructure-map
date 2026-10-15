@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
     applyLayerGroupVisibility,
+    DEFAULT_LAYER_VISIBILITY,
     getPoliceResponseCoveragePmtilesUrl,
     getRoadNetworkColor,
     getRoadNetworkColorExpression,
@@ -8,6 +9,17 @@ import {
     getRoadNetworkWidthExpression,
     POLICE_RESPONSE_COVERAGE_PMTILES_FILE,
 } from './usePmtilesMap';
+
+describe('default layer visibility', () => {
+    it('shows core layers and hides response coverage until toggled on', () => {
+        expect(DEFAULT_LAYER_VISIBILITY).toEqual({
+            roads: true,
+            boundaries: true,
+            facilities: true,
+            responseCoverage: false,
+        });
+    });
+});
 
 describe('police response coverage tiles', () => {
     it('loads the R5 statewide archive, not the older M6 baseline', () => {

@@ -153,7 +153,7 @@ export const Ready: Story = {
         await expect(canvas.getByRole('heading', { name: /WA Critical Infrastructure Map/ })).toBeTruthy();
         await expect(canvas.getByRole('group', { name: 'Layers' })).toBeTruthy();
         await expect(canvas.getByRole('checkbox', { name: 'Roads' })).toBeTruthy();
-        const responseCoverage = canvas.getByRole('checkbox', { name: 'Response coverage' }) as HTMLInputElement;
+        const responseCoverage = canvas.getByRole('checkbox', { name: 'Police Response Coverage' }) as HTMLInputElement;
         await expect(responseCoverage).toBeTruthy();
         await expect(responseCoverage.checked).toBe(false);
         await expect(canvas.getByLabelText('Road network legend')).toBeTruthy();
@@ -241,9 +241,9 @@ export const MapLayers: Story = {
         const canvas = within(canvasElement);
         const control = canvas.getByRole('group', { name: 'Layers' }) as HTMLDetailsElement;
         const roads = canvas.getByRole('checkbox', { name: 'Roads' }) as HTMLInputElement;
-        const boundaries = canvas.getByRole('checkbox', { name: 'LGA boundaries' }) as HTMLInputElement;
-        const facilities = canvas.getByRole('checkbox', { name: 'Police facilities' }) as HTMLInputElement;
-        const responseCoverage = canvas.getByRole('checkbox', { name: 'Response coverage' }) as HTMLInputElement;
+        const boundaries = canvas.getByRole('checkbox', { name: 'LGA Boundaries' }) as HTMLInputElement;
+        const facilities = canvas.getByRole('checkbox', { name: 'Police Stations' }) as HTMLInputElement;
+        const responseCoverage = canvas.getByRole('checkbox', { name: 'Police Response Coverage' }) as HTMLInputElement;
 
         await expect(control.textContent).toContain('Layers');
         await expect(control.open).toBe(true);
@@ -284,13 +284,13 @@ export const Legend: Story = {
             'miscellaneous road',
             'proposed road',
             'state road',
-            'LGA boundaries',
-            'Police facilities',
-            'Response coverage: under 5 min',
-            'Response coverage: 5–10 min',
-            'Response coverage: 10–15 min',
-            'Response coverage: over 15 min',
-            'Response coverage: unreachable',
+            'LGA Boundaries',
+            'Police Stations',
+            'Police Response Coverage: under 5 min',
+            'Police Response Coverage: 5–10 min',
+            'Police Response Coverage: 10–15 min',
+            'Police Response Coverage: over 15 min',
+            'Police Response Coverage: unreachable',
         ]);
 
         await userEvent.click(within(legend).getByText('Legend'));
@@ -312,7 +312,7 @@ export const PoliceFacilitiesClusters: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         // Same as Ready: assert facilities control without waiting on PMTiles.
-        await expect(canvas.getByRole('checkbox', { name: 'Police facilities' })).toBeTruthy();
+        await expect(canvas.getByRole('checkbox', { name: 'Police Stations' })).toBeTruthy();
         await expect(canvas.getByRole('group', { name: 'Layers' })).toBeTruthy();
         await expect(canvas.getByRole('heading', { name: /WA Critical Infrastructure Map/ })).toBeTruthy();
         await waitFor(() => {

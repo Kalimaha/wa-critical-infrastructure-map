@@ -4,7 +4,12 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import MapApp from './MapApp';
 import MapView from './MapView';
 import { createFeaturePopup, type PopupFeature } from './featurePopup';
-import { getRoadNetworkColor, getRoadNetworkWidth } from './usePmtilesMap';
+import {
+    getPoliceResponseCoveragePmtilesUrl,
+    getRoadNetworkColor,
+    getRoadNetworkWidth,
+    POLICE_RESPONSE_COVERAGE_PMTILES_FILE,
+} from './usePmtilesMap';
 import type { MapLayerGroup, MapLayerVisibility } from './usePmtilesMap';
 
 const meta = {
@@ -139,8 +144,12 @@ export const Ready: Story = {
     render: () => <MapApp />,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        // Assert chrome only — do not wait on MapLibre/PMTiles (coverage `_m6` or
+        // Assert chrome only — do not wait on MapLibre/PMTiles (coverage `_r5` or
         // `/pmtiles` proxy). Live tile load is flaky in Storybook CI.
+        await expect(POLICE_RESPONSE_COVERAGE_PMTILES_FILE).toBe('Police_Response_Coverage_r5.pmtiles');
+        await expect(getPoliceResponseCoveragePmtilesUrl('https://example.test')).toContain(
+            'Police_Response_Coverage_r5.pmtiles',
+        );
         await expect(canvas.getByRole('heading', { name: /WA Critical Infrastructure Map/ })).toBeTruthy();
         await expect(canvas.getByRole('group', { name: 'Map layers' })).toBeTruthy();
         await expect(canvas.getByRole('checkbox', { name: 'Roads' })).toBeTruthy();

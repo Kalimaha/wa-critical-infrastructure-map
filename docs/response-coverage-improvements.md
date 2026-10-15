@@ -1,6 +1,6 @@
 # Response coverage — follow-up improvements
 
-Baseline dense layer (`Police_Response_Coverage_m6.pmtiles`) stays as-is on `emergency-coverage` until a scheduled recompute. Checklist below tracks diagnosis and the R3 notebook/map fixes.
+The live map loads the R5 statewide archive (`Police_Response_Coverage_r5.pmtiles`). The older M6 baseline on S3 is left in place and is not overwritten by map deploys. Checklist below tracks diagnosis and the R3 notebook/map fixes.
 
 ## Diagnose
 

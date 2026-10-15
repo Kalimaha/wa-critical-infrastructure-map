@@ -1,3 +1,4 @@
 *.pmtiles*
 *.json
 *.geojson
+*.duckdb*

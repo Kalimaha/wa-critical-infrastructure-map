@@ -18,14 +18,14 @@ interface LegendEntry {
 
 const LEGEND_ENTRIES: Record<MapLayerGroup, LegendEntry[]> = {
     roads: Object.entries(ROAD_NETWORK_STYLES).map(([label, style]) => ({ label, color: style.color })),
-    boundaries: [{ label: 'LGA boundaries', swatchModifier: 'boundary' }],
-    facilities: [{ label: 'Police facilities', swatchModifier: 'facility' }],
+    boundaries: [{ label: 'LGA Boundaries', swatchModifier: 'boundary' }],
+    facilities: [{ label: 'Police Stations', swatchModifier: 'facility' }],
     responseCoverage: [
-        { label: 'Response coverage: under 5 min', swatchModifier: 'response-green' },
-        { label: 'Response coverage: 5–10 min', swatchModifier: 'response-yellow' },
-        { label: 'Response coverage: 10–15 min', swatchModifier: 'response-orange' },
-        { label: 'Response coverage: over 15 min', swatchModifier: 'response-red' },
-        { label: 'Response coverage: unreachable', swatchModifier: 'response-unreachable' },
+        { label: 'Police Response Coverage: under 5 min', swatchModifier: 'response-green' },
+        { label: 'Police Response Coverage: 5–10 min', swatchModifier: 'response-yellow' },
+        { label: 'Police Response Coverage: 10–15 min', swatchModifier: 'response-orange' },
+        { label: 'Police Response Coverage: over 15 min', swatchModifier: 'response-red' },
+        { label: 'Police Response Coverage: unreachable', swatchModifier: 'response-unreachable' },
     ],
 };
 
@@ -136,7 +136,7 @@ function MapView({
                                 checked={layerVisibility?.boundaries ?? true}
                                 onChange={event => onLayerVisibilityChange('boundaries', event.currentTarget.checked)}
                             />
-                            LGA boundaries
+                            LGA Boundaries
                         </label>
                         <label>
                             <input
@@ -144,15 +144,17 @@ function MapView({
                                 checked={layerVisibility?.facilities ?? true}
                                 onChange={event => onLayerVisibilityChange('facilities', event.currentTarget.checked)}
                             />
-                            Police facilities
+                            Police Stations
                         </label>
+                        <hr className="map-layer-control__separator" />
+                        <p className="map-layer-control__section-title">Processed Layers</p>
                         <label>
                             <input
                                 type="checkbox"
                                 checked={layerVisibility?.responseCoverage ?? true}
                                 onChange={event => onLayerVisibilityChange('responseCoverage', event.currentTarget.checked)}
                             />
-                            Response coverage
+                            Police Response Coverage
                         </label>
                     </details>
                 )}

@@ -47,11 +47,26 @@ describe('map layer control', () => {
         expect(checkboxes).toHaveLength(4);
         expect(checkboxes.map(checkbox => checkbox.parentElement?.textContent?.trim())).toEqual([
             'Roads',
-            'LGA boundaries',
-            'Police facilities',
-            'Response coverage',
+            'LGA Boundaries',
+            'Police Stations',
+            'Police Response Coverage',
         ]);
         expect(checkboxes.map(checkbox => checkbox.checked)).toEqual([true, false, true, false]);
+    });
+
+    it('separates processed layers under their own title', () => {
+        const container = renderMapView({
+            status: 'Ready',
+            loading: false,
+            layerVisibility: visibility,
+            onLayerVisibilityChange: vi.fn(),
+        });
+        const separator = container.querySelector('.map-layer-control__separator');
+        const sectionTitle = separator?.nextElementSibling;
+
+        expect(separator?.previousElementSibling?.textContent?.trim()).toBe('Police Stations');
+        expect(sectionTitle?.textContent).toBe('Processed Layers');
+        expect(sectionTitle?.nextElementSibling?.textContent?.trim()).toBe('Police Response Coverage');
     });
 
     it('collapses and expands when the title is clicked', () => {
@@ -117,13 +132,13 @@ describe('map legend', () => {
             'miscellaneous road',
             'proposed road',
             'state road',
-            'LGA boundaries',
-            'Police facilities',
-            'Response coverage: under 5 min',
-            'Response coverage: 5–10 min',
-            'Response coverage: 10–15 min',
-            'Response coverage: over 15 min',
-            'Response coverage: unreachable',
+            'LGA Boundaries',
+            'Police Stations',
+            'Police Response Coverage: under 5 min',
+            'Police Response Coverage: 5–10 min',
+            'Police Response Coverage: 10–15 min',
+            'Police Response Coverage: over 15 min',
+            'Police Response Coverage: unreachable',
         ]);
         expect(legend?.querySelector('.map-legend__swatch--boundary')).not.toBeNull();
         expect(legend?.querySelector('.map-legend__swatch--facility')).not.toBeNull();
@@ -144,7 +159,7 @@ describe('map legend', () => {
         const entries = [...container.querySelectorAll('.map-legend__item')]
             .map(entry => entry.textContent?.trim());
 
-        expect(entries).toEqual(['LGA boundaries', 'Police facilities']);
+        expect(entries).toEqual(['LGA Boundaries', 'Police Stations']);
     });
 
     it('updates when a layer is toggled', () => {
@@ -156,7 +171,7 @@ describe('map legend', () => {
         };
         const container = renderMapView(props);
         const responseEntries = () => [...container.querySelectorAll('.map-legend__item')]
-            .filter(entry => entry.textContent?.startsWith('Response coverage'));
+            .filter(entry => entry.textContent?.startsWith('Police Response Coverage'));
 
         expect(responseEntries()).toHaveLength(5);
 

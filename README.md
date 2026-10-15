@@ -115,7 +115,7 @@ uv run pytest
 | Path | Role |
 | --- | --- |
 | `data/raw/` | Source GeoJSON / shapefiles from [Data WA](https://data.wa.gov.au/). Gitignored; see [`data/raw/README.md`](data/raw/README.md). |
-| `data/processed/` | Generated PMTiles, the DuckDB working database, and the cached H3 grid (`cache/`). Gitignored. |
+| `data/processed/` | Generated PMTiles, the DuckDB working database, and `cache/` (GeoParquet copies of the raw inputs and the H3 grid). Gitignored. |
 | `notebooks/02-geojson-to-pmtiles.ipynb` | Convert roads, LGA boundaries, and police facilities to PMTiles. |
 | `notebooks/03-h3-police-response-coverage.ipynb` | Build the H3 response-coverage grid and export PMTiles. |
 

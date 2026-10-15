@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 import shutil
 from pathlib import Path
@@ -74,7 +75,7 @@ def config(tmp_path: Path) -> rc.CoverageConfig:
         boundary_path=boundaries,
         output_dir=tmp_path / "out",
         layer_name="Test_Coverage",
-        grid_cache_dir=tmp_path / "out" / "cache",
+        cache_dir=tmp_path / "out" / "cache",
         road_crs="EPSG:4326",
         station_crs="EPSG:4326",
         boundary_crs="EPSG:4326",
@@ -196,6 +197,34 @@ def test_grid_cache_is_reused_until_the_boundary_changes(config, monkeypatch):
     assert (first_from_cache, second_from_cache, third_from_cache) == (False, True, False)
     assert second_count == first_count
     assert third_count < first_count
+
+
+def test_geoparquet_source_cache_matches_direct_reads(config):
+    tables = ("roads", "stations", "boundaries")
+
+    def snapshot(run_config: rc.CoverageConfig) -> dict[str, list[tuple]]:
+        con = rc.connect(run_config)
+        rc.load_inputs(con, run_config)
+        rows = {
+            table: con.execute(f"""
+                SELECT * EXCLUDE (geom, projected_geom), ST_AsText(geom), ST_AsText(projected_geom)
+                FROM {table} ORDER BY ALL
+            """).fetchall()
+            for table in tables
+        }
+        con.close()
+        return rows
+
+    direct = snapshot(dataclasses.replace(config, cache_dir=None))
+    cached = snapshot(config)
+    cached_files = sorted(path.name for path in config.cache_dir.glob("source_*.parquet"))
+    write_geojson(config.station_path, [point("Moved", 115.81, ROAD_LATITUDE)])
+    after_change = snapshot(config)
+
+    assert cached == direct
+    assert len(cached_files) == 3
+    assert [row[1] for row in after_change["stations"]] == ["Moved"]
+    assert len(list(config.cache_dir.glob("source_*.parquet"))) == 3
 
 
 @pytest.mark.skipif(shutil.which("tippecanoe") is None, reason="tippecanoe is not installed")

@@ -70,7 +70,7 @@ class CoverageConfig:
     boundary_path: Path
     output_dir: Path
     layer_name: str = "Police_Response_Coverage"
-    grid_cache_dir: Path | None = None
+    cache_dir: Path | None = None
     road_crs: str = "EPSG:4326"
     station_crs: str = "EPSG:4283"
     boundary_crs: str = "EPSG:7844"
@@ -89,7 +89,7 @@ class CoverageConfig:
             station_path=raw_dir / "WAPoliceForceFacilities_SHP" / "Police_Facilities.shp",
             boundary_path=raw_dir / "LGA_Boundaries_LGATE_233_WA_GDA2020_Public.geojson",
             output_dir=processed_dir,
-            grid_cache_dir=processed_dir / "cache",
+            cache_dir=processed_dir / "cache",
         )
 
     @property
@@ -113,11 +113,50 @@ def connect(config: CoverageConfig, fresh: bool = True) -> duckdb.DuckDBPyConnec
     return con
 
 
+def _source_digest(path: Path, extra: str = "") -> str:
+    """Hash of a layer's contents, including shapefile sidecars such as ``.dbf``."""
+    digest = hashlib.sha256()
+    for member in sorted(path.parent.glob(f"{path.stem}.*")):
+        if member.suffix.lower() in (".pdf", ".xml"):
+            continue
+        digest.update(member.name.encode())
+        with member.open("rb") as source_file:
+            for chunk in iter(lambda: source_file.read(1 << 20), b""):
+                digest.update(chunk)
+    digest.update(extra.encode())
+    return digest.hexdigest()[:16]
+
+
+def source_relation(con: duckdb.DuckDBPyConnection, config: CoverageConfig, path: Path) -> str:
+    """SQL relation for a raw input layer, read via a GeoParquet copy when caching is on.
+
+    GDAL parses GeoJSON slowly and in full on every read; the GeoParquet copy is
+    written once per source version and keeps every column, the CRS, and row order.
+    """
+    if config.cache_dir is None:
+        return f"ST_Read('{path}')"
+    cache_path = config.cache_dir / f"source_{path.stem}_{_source_digest(path)}.parquet"
+    if not cache_path.exists():
+        config.cache_dir.mkdir(parents=True, exist_ok=True)
+        for stale in config.cache_dir.glob(f"source_{path.stem}_*.parquet"):
+            stale.unlink()
+        partial = cache_path.with_suffix(".partial")
+        con.execute(f"""
+            COPY (SELECT * FROM ST_Read('{path}'))
+            TO '{partial}' (FORMAT PARQUET, COMPRESSION ZSTD)
+        """)
+        partial.rename(cache_path)
+    return f"read_parquet('{cache_path}')"
+
+
 def load_inputs(con: duckdb.DuckDBPyConnection, config: CoverageConfig) -> dict[str, int]:
     """Load, validate, and project roads, stations, and boundaries into DuckDB tables."""
     for path in (config.road_path, config.station_path, config.boundary_path):
         if not path.exists():
             raise FileNotFoundError(f"Required input layer not found: {path}")
+    road_source = source_relation(con, config, config.road_path)
+    station_source = source_relation(con, config, config.station_path)
+    boundary_source = source_relation(con, config, config.boundary_path)
 
     unknown_speed = config.road_speed_kmh["Unknown"]
     con.execute(
@@ -136,7 +175,7 @@ def load_inputs(con: duckdb.DuckDBPyConnection, config: CoverageConfig) -> dict[
             r.geom AS geom,
             ST_Transform(r.geom, '{config.road_crs}', '{config.projected_crs}', always_xy := true)
                 AS projected_geom
-        FROM ST_Read('{config.road_path}') AS r
+        FROM {road_source} AS r
         LEFT JOIN road_speeds AS speeds ON speeds.network_type = coalesce(r.NETWORK_TYPE, 'Unknown')
     """)
 
@@ -163,7 +202,7 @@ def load_inputs(con: duckdb.DuckDBPyConnection, config: CoverageConfig) -> dict[
             geom,
             ST_Transform(geom, '{config.station_crs}', '{config.projected_crs}', always_xy := true)
                 AS projected_geom
-        FROM ST_Read('{config.station_path}')
+        FROM {station_source}
     """)
     con.execute("""
         CREATE OR REPLACE TABLE stations AS
@@ -178,7 +217,7 @@ def load_inputs(con: duckdb.DuckDBPyConnection, config: CoverageConfig) -> dict[
             geom,
             ST_Transform(geom, '{config.boundary_crs}', '{config.projected_crs}', always_xy := true)
                 AS projected_geom
-        FROM ST_Read('{config.boundary_path}')
+        FROM {boundary_source}
     """)
     con.execute("""
         CREATE OR REPLACE TABLE boundaries AS
@@ -335,14 +374,10 @@ def polyfill_boundaries(
 
 def grid_cache_path(config: CoverageConfig) -> Path | None:
     """Cache file keyed on the boundary file contents, boundary CRS, and H3 resolution."""
-    if config.grid_cache_dir is None:
+    if config.cache_dir is None:
         return None
-    digest = hashlib.sha256()
-    with config.boundary_path.open("rb") as boundary_file:
-        for chunk in iter(lambda: boundary_file.read(1 << 20), b""):
-            digest.update(chunk)
-    digest.update(f"{config.boundary_crs}|{config.h3_resolution}".encode())
-    return config.grid_cache_dir / f"h3_grid_r{config.h3_resolution}_{digest.hexdigest()[:16]}.parquet"
+    digest = _source_digest(config.boundary_path, f"{config.boundary_crs}|{config.h3_resolution}")
+    return config.cache_dir / f"h3_grid_r{config.h3_resolution}_{digest}.parquet"
 
 
 def generate_full_grid(con: duckdb.DuckDBPyConnection, config: CoverageConfig) -> tuple[int, bool]:

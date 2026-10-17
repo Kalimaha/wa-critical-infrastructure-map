@@ -12,6 +12,7 @@ import {
     loadPoliceFacilityFeatures,
     POLICE_FACILITY_CLUSTER_COLOR,
 } from './policeFacilities';
+import { currentMapBackgroundColor, watchColorScheme } from './mapAppearance';
 import { ROAD_NETWORK_TYPE_ATTRIBUTE } from './roadAttributes';
 
 const PMTILES_BUCKET_URL = 'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com';
@@ -263,7 +264,7 @@ export function usePmtilesMap() {
                         layers: [{
                             id: 'bg',
                             type: 'background',
-                            paint: { 'background-color': '#f2efe9' },
+                            paint: { 'background-color': currentMapBackgroundColor() },
                         }],
                     },
                     bounds: [
@@ -274,6 +275,16 @@ export function usePmtilesMap() {
                 });
                 map = mapInstance;
                 mapRef.current = mapInstance;
+                const stopWatchingColorScheme = watchColorScheme(() => {
+                    if (mapInstance.getLayer('bg')) {
+                        mapInstance.setPaintProperty('bg', 'background-color', currentMapBackgroundColor());
+                    }
+                });
+                if (disposed) {
+                    stopWatchingColorScheme();
+                    return;
+                }
+                removeSchemeListener = stopWatchingColorScheme;
                 mapInstance.addControl(new maplibregl.NavigationControl());
                 mapInstance.addControl(new maplibregl.ScaleControl());
                 let mapSettled = false;
@@ -591,9 +602,11 @@ export function usePmtilesMap() {
             }
         }
 
+        let removeSchemeListener = () => {};
         initializeMap();
         return () => {
             disposed = true;
+            removeSchemeListener();
             map?.remove();
             mapRef.current = null;
             layerGroupIdsRef.current = {

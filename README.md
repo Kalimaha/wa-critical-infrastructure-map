@@ -32,7 +32,7 @@ Useful frontend commands:
 | --- | --- |
 | `npm run dev` | Vite dev server with the PMTiles proxy |
 | `npm run build` | Typecheck, then write `dist/` |
-| `npm run deploy` | Sync local `dist/` to the S3 prod prefix, then upload `DFES_Stations.pmtiles` and `DFES_Response_Coverage.pmtiles` from `data/processed/` to the bucket root |
+| `npm run deploy` | Sync local `dist/` to the S3 prod prefix |
 | `npm run deploy:tiles` | Upload `DFES_Stations.pmtiles` and `DFES_Response_Coverage.pmtiles` from `data/processed/` to the bucket root |
 | `npm run deploy:prod` | `npm run build` then `npm run deploy` |
 | `npm run preview` | Serve the production build locally |
@@ -46,7 +46,7 @@ Production is the static site under the `dist/` prefix of the `wa-critical-infra
 
 [https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/dist/index.html](https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/dist/index.html)
 
-`npm run deploy` runs `aws s3 sync` of `./dist/` to `s3://wa-critical-infrastructure-map/dist/` with `--delete`, then copies `DFES_Stations.pmtiles` and `DFES_Response_Coverage.pmtiles` from `data/processed/` to the bucket root when those files exist. That copy does not delete other bucket objects, so the road, boundary, and police archives stay in place. `npm run deploy:tiles` uploads only those PMTiles.
+`npm run deploy` runs `aws s3 sync` of `./dist/` to `s3://wa-critical-infrastructure-map/dist/` with `--delete`. It does not upload PMTiles. `npm run deploy:tiles` is the separate command that copies `DFES_Stations.pmtiles` and `DFES_Response_Coverage.pmtiles` from `data/processed/` to the bucket root when those archives change. That copy does not delete other bucket objects, so the road, boundary, and police archives stay in place.
 
 **Cloud Agent:** ask to “build and deploy”. The agent runs `npm run deploy:prod`. `deploy` installs AWS CLI via [`scripts/install-aws-cli.sh`](scripts/install-aws-cli.sh) if needed. The Cursor environment must provide secrets `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_DEFAULT_REGION` (`ap-southeast-2`).
 

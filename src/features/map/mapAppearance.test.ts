@@ -64,5 +64,8 @@ describe('home screen install', () => {
         for (const icon of ['public/apple-touch-icon.png', 'public/icon-192.png', 'public/icon-512.png']) {
             expect(existsSync(resolve(process.cwd(), icon))).toBe(true);
         }
+        const iconLicense = readFileSync(resolve(process.cwd(), 'public/icon-license.txt'), 'utf8');
+        expect(iconLicense).toContain('Badge of Western Australia.svg');
+        expect(iconLicense).toContain('CC BY-SA 4.0');
     });
 });

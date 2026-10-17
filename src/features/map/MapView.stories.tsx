@@ -5,6 +5,8 @@ import MapApp from './MapApp';
 import MapView from './MapView';
 import { createFeaturePopup, type PopupFeature } from './featurePopup';
 import {
+    DFES_RESPONSE_COVERAGE_PMTILES_FILE,
+    getDfesResponseCoveragePmtilesUrl,
     getPoliceResponseCoveragePmtilesUrl,
     getRoadNetworkColor,
     getRoadNetworkWidth,
@@ -112,7 +114,9 @@ function LayerControlsPreview() {
         roads: true,
         boundaries: true,
         facilities: true,
+        dfesStations: true,
         responseCoverage: false,
+        fireResponseCoverage: false,
     });
 
     function handleVisibilityChange(group: MapLayerGroup, visible: boolean) {
@@ -150,12 +154,20 @@ export const Ready: Story = {
         await expect(getPoliceResponseCoveragePmtilesUrl('https://example.test')).toContain(
             'Police_Response_Coverage_r5.pmtiles',
         );
+        await expect(DFES_RESPONSE_COVERAGE_PMTILES_FILE).toBe('DFES_Response_Coverage.pmtiles');
+        await expect(getDfesResponseCoveragePmtilesUrl('https://example.test')).toContain(
+            'DFES_Response_Coverage.pmtiles',
+        );
         await expect(canvas.getByRole('heading', { name: /WA Critical Infrastructure Map/ })).toBeTruthy();
         await expect(canvas.getByRole('group', { name: 'Layers' })).toBeTruthy();
         await expect(canvas.getByRole('checkbox', { name: 'Roads' })).toBeTruthy();
+        const dfesStations = canvas.getByRole('checkbox', { name: 'DFES Stations' }) as HTMLInputElement;
+        await expect(dfesStations.checked).toBe(true);
         const responseCoverage = canvas.getByRole('checkbox', { name: 'Police Response Coverage' }) as HTMLInputElement;
         await expect(responseCoverage).toBeTruthy();
         await expect(responseCoverage.checked).toBe(false);
+        const fireResponseCoverage = canvas.getByRole('checkbox', { name: 'Fire Response Coverage' }) as HTMLInputElement;
+        await expect(fireResponseCoverage.checked).toBe(false);
         await expect(canvas.getByLabelText('Road network legend')).toBeTruthy();
         await waitFor(() => {
             const status = canvas.queryByRole('status');
@@ -243,14 +255,18 @@ export const MapLayers: Story = {
         const roads = canvas.getByRole('checkbox', { name: 'Roads' }) as HTMLInputElement;
         const boundaries = canvas.getByRole('checkbox', { name: 'LGA Boundaries' }) as HTMLInputElement;
         const facilities = canvas.getByRole('checkbox', { name: 'Police Stations' }) as HTMLInputElement;
+        const dfesStations = canvas.getByRole('checkbox', { name: 'DFES Stations' }) as HTMLInputElement;
         const responseCoverage = canvas.getByRole('checkbox', { name: 'Police Response Coverage' }) as HTMLInputElement;
+        const fireResponseCoverage = canvas.getByRole('checkbox', { name: 'Fire Response Coverage' }) as HTMLInputElement;
 
         await expect(control.textContent).toContain('Layers');
         await expect(control.open).toBe(true);
         await expect(roads.checked).toBe(true);
         await expect(boundaries.checked).toBe(true);
         await expect(facilities.checked).toBe(true);
+        await expect(dfesStations.checked).toBe(true);
         await expect(responseCoverage.checked).toBe(false);
+        await expect(fireResponseCoverage.checked).toBe(false);
         await userEvent.click(roads);
         await expect(roads.checked).toBe(false);
         await expect(boundaries.checked).toBe(true);
@@ -258,8 +274,25 @@ export const MapLayers: Story = {
         await expect(boundaries.checked).toBe(false);
         await userEvent.click(facilities);
         await expect(facilities.checked).toBe(false);
+        await userEvent.click(dfesStations);
+        await expect(dfesStations.checked).toBe(false);
         await userEvent.click(responseCoverage);
         await expect(responseCoverage.checked).toBe(true);
+        await userEvent.click(fireResponseCoverage);
+        await expect(fireResponseCoverage.checked).toBe(true);
+
+        const legend = canvas.getByLabelText('Road network legend');
+        const legendText = () => within(legend).getAllByRole('listitem').map(entry => entry.textContent?.trim());
+        await expect(legendText().some(entry => entry?.startsWith('Fire Response Coverage'))).toBe(true);
+        await expect(legendText().some(entry => entry?.startsWith('BFB'))).toBe(false);
+
+        await userEvent.click(facilities);
+        await userEvent.click(dfesStations);
+        await expect(legendText()).toContain('Police Station');
+        await expect(legendText()).toContain('BFB — Bush Fire Brigade');
+        await userEvent.click(dfesStations);
+        await expect(legendText().some(entry => entry?.startsWith('BFB'))).toBe(false);
+        await expect(legendText()).toContain('Police Station');
 
         await userEvent.click(canvas.getByText('Layers'));
         await expect(control.open).toBe(false);
@@ -285,12 +318,29 @@ export const Legend: Story = {
             'proposed road',
             'state road',
             'LGA Boundaries',
-            'Police Stations',
+            'Police Station',
+            'District Office',
+            'Multi Functional Police Facility',
+            'Multi-Jurisdictional Police Facility',
+            'Police Headquarters',
+            'BFB — Bush Fire Brigade',
+            'VFRS — Volunteer Fire and Rescue',
+            'VFESU — Volunteer Fire and Emergency',
+            'CFRS — Career Fire and Rescue',
+            'PFRS — Private Fire and Rescue',
+            'SESU — State Emergency Service',
+            'VMRS — Volunteer Marine Rescue',
+            'DFES — DFES offices and support',
             'Police Response Coverage: under 5 min',
             'Police Response Coverage: 5–10 min',
             'Police Response Coverage: 10–15 min',
             'Police Response Coverage: over 15 min',
             'Police Response Coverage: unreachable',
+            'Fire Response Coverage: under 5 min',
+            'Fire Response Coverage: 5–10 min',
+            'Fire Response Coverage: 10–15 min',
+            'Fire Response Coverage: over 15 min',
+            'Fire Response Coverage: unreachable',
         ]);
 
         await userEvent.click(within(legend).getByText('Legend'));
@@ -305,7 +355,7 @@ export const PoliceFacilitiesClusters: Story = {
     parameters: {
         docs: {
             description: {
-                story: 'Police facility points aggregate into blue count badges at overview zoom; clicking a badge zooms to the cluster, while individual points retain their facility popups.',
+                story: 'Police facility points aggregate into navy count badges at overview zoom. Individual points are coloured by facility type, and clicking a badge zooms to the cluster.',
             },
         },
     },

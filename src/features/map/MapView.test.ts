@@ -29,10 +29,12 @@ describe('map layer control', () => {
         roads: true,
         boundaries: false,
         facilities: true,
+        dfesStations: true,
         responseCoverage: false,
+        fireResponseCoverage: false,
     };
 
-    it('shows all four layer toggles with the supplied visibility', () => {
+    it('shows all six layer toggles with the supplied visibility', () => {
         const container = renderMapView({
             status: 'Ready',
             loading: false,
@@ -44,14 +46,16 @@ describe('map layer control', () => {
 
         expect(control?.textContent).toContain('Layers');
         expect((control as HTMLDetailsElement | null)?.open).toBe(true);
-        expect(checkboxes).toHaveLength(4);
+        expect(checkboxes).toHaveLength(6);
         expect(checkboxes.map(checkbox => checkbox.parentElement?.textContent?.trim())).toEqual([
             'Roads',
             'LGA Boundaries',
             'Police Stations',
+            'DFES Stations',
             'Police Response Coverage',
+            'Fire Response Coverage',
         ]);
-        expect(checkboxes.map(checkbox => checkbox.checked)).toEqual([true, false, true, false]);
+        expect(checkboxes.map(checkbox => checkbox.checked)).toEqual([true, false, true, true, false, false]);
     });
 
     it('separates processed layers under their own title', () => {
@@ -64,9 +68,10 @@ describe('map layer control', () => {
         const separator = container.querySelector('.map-layer-control__separator');
         const sectionTitle = separator?.nextElementSibling;
 
-        expect(separator?.previousElementSibling?.textContent?.trim()).toBe('Police Stations');
+        expect(separator?.previousElementSibling?.textContent?.trim()).toBe('DFES Stations');
         expect(sectionTitle?.textContent).toBe('Processed Layers');
         expect(sectionTitle?.nextElementSibling?.textContent?.trim()).toBe('Police Response Coverage');
+        expect(sectionTitle?.nextElementSibling?.nextElementSibling?.textContent?.trim()).toBe('Fire Response Coverage');
     });
 
     it('collapses and expands when the title is clicked', () => {
@@ -94,7 +99,7 @@ describe('map layer control', () => {
             layerVisibility: visibility,
             onLayerVisibilityChange,
         });
-        const responseCoverage = [...container.querySelectorAll<HTMLInputElement>('.map-layer-control input')][3];
+        const responseCoverage = [...container.querySelectorAll<HTMLInputElement>('.map-layer-control input')][4];
 
         act(() => responseCoverage.click());
 
@@ -133,15 +138,31 @@ describe('map legend', () => {
             'proposed road',
             'state road',
             'LGA Boundaries',
-            'Police Stations',
+            'Police Station',
+            'District Office',
+            'Multi Functional Police Facility',
+            'Multi-Jurisdictional Police Facility',
+            'Police Headquarters',
+            'BFB — Bush Fire Brigade',
+            'VFRS — Volunteer Fire and Rescue',
+            'VFESU — Volunteer Fire and Emergency',
+            'CFRS — Career Fire and Rescue',
+            'PFRS — Private Fire and Rescue',
+            'SESU — State Emergency Service',
+            'VMRS — Volunteer Marine Rescue',
+            'DFES — DFES offices and support',
             'Police Response Coverage: under 5 min',
             'Police Response Coverage: 5–10 min',
             'Police Response Coverage: 10–15 min',
             'Police Response Coverage: over 15 min',
             'Police Response Coverage: unreachable',
+            'Fire Response Coverage: under 5 min',
+            'Fire Response Coverage: 5–10 min',
+            'Fire Response Coverage: 10–15 min',
+            'Fire Response Coverage: over 15 min',
+            'Fire Response Coverage: unreachable',
         ]);
         expect(legend?.querySelector('.map-legend__swatch--boundary')).not.toBeNull();
-        expect(legend?.querySelector('.map-legend__swatch--facility')).not.toBeNull();
         expect(legend?.querySelector('.map-legend__swatch--response-green')).not.toBeNull();
         expect(legend?.querySelector('.map-legend__swatch--response-yellow')).not.toBeNull();
         expect(legend?.querySelector('.map-legend__swatch--response-orange')).not.toBeNull();
@@ -153,20 +174,41 @@ describe('map legend', () => {
         const container = renderMapView({
             status: 'Ready',
             loading: false,
-            layerVisibility: { roads: false, boundaries: true, facilities: true, responseCoverage: false },
+            layerVisibility: {
+                roads: false,
+                boundaries: true,
+                facilities: true,
+                dfesStations: false,
+                responseCoverage: false,
+                fireResponseCoverage: false,
+            },
             onLayerVisibilityChange: vi.fn(),
         });
         const entries = [...container.querySelectorAll('.map-legend__item')]
             .map(entry => entry.textContent?.trim());
 
-        expect(entries).toEqual(['LGA Boundaries', 'Police Stations']);
+        expect(entries).toEqual([
+            'LGA Boundaries',
+            'Police Station',
+            'District Office',
+            'Multi Functional Police Facility',
+            'Multi-Jurisdictional Police Facility',
+            'Police Headquarters',
+        ]);
     });
 
     it('updates when a layer is toggled', () => {
         const props = {
             status: 'Ready',
             loading: false,
-            layerVisibility: { roads: false, boundaries: false, facilities: false, responseCoverage: true },
+            layerVisibility: {
+                roads: false,
+                boundaries: false,
+                facilities: false,
+                dfesStations: false,
+                responseCoverage: true,
+                fireResponseCoverage: false,
+            },
             onLayerVisibilityChange: vi.fn(),
         };
         const container = renderMapView(props);
@@ -181,6 +223,40 @@ describe('map legend', () => {
         })));
 
         expect(responseEntries()).toHaveLength(0);
+        expect(container.querySelector('.map-legend__empty')?.textContent).toBe('No layers visible');
+    });
+
+    it('colours police and DFES legend swatches by type and hides them with the layer', () => {
+        const props = {
+            status: 'Ready',
+            loading: false,
+            layerVisibility: {
+                roads: false,
+                boundaries: false,
+                facilities: true,
+                dfesStations: true,
+                responseCoverage: false,
+                fireResponseCoverage: true,
+            },
+            onLayerVisibilityChange: vi.fn(),
+        };
+        const container = renderMapView(props);
+        const swatchFor = (label: string) => [...container.querySelectorAll('.map-legend__item')]
+            .find(entry => entry.textContent?.trim() === label)
+            ?.querySelector('.map-legend__swatch');
+
+        expect(swatchFor('Police Station')?.getAttribute('style')).toContain('background-color: rgb(0, 51, 161)');
+        expect(swatchFor('District Office')?.getAttribute('style')).toContain('background-color: rgb(3, 155, 229)');
+        expect(swatchFor('BFB — Bush Fire Brigade')?.getAttribute('style')).toContain('background-color: rgb(230, 168, 23)');
+        expect(swatchFor('CFRS — Career Fire and Rescue')?.getAttribute('style')).toContain('background-color: rgb(183, 28, 28)');
+        expect([...container.querySelectorAll('.map-legend__item')]
+            .filter(entry => entry.textContent?.startsWith('Fire Response Coverage'))).toHaveLength(5);
+
+        act(() => roots[0].render(createElement(MapView, {
+            ...props,
+            layerVisibility: { ...props.layerVisibility, facilities: false, dfesStations: false, fireResponseCoverage: false },
+        })));
+
         expect(container.querySelector('.map-legend__empty')?.textContent).toBe('No layers visible');
     });
 

@@ -1,5 +1,7 @@
 import type { Ref, SyntheticEvent } from 'react';
 import { useState } from 'react';
+import { DFES_STATION_TYPES } from './dfesStations';
+import { POLICE_FACILITY_TYPES } from './policeFacilities';
 import { ROAD_NETWORK_STYLES, type MapLayerGroup, type MapLayerVisibility } from './usePmtilesMap';
 
 export interface MapViewProps {
@@ -19,7 +21,11 @@ interface LegendEntry {
 const LEGEND_ENTRIES: Record<MapLayerGroup, LegendEntry[]> = {
     roads: Object.entries(ROAD_NETWORK_STYLES).map(([label, style]) => ({ label, color: style.color })),
     boundaries: [{ label: 'LGA Boundaries', swatchModifier: 'boundary' }],
-    facilities: [{ label: 'Police Stations', swatchModifier: 'facility' }],
+    facilities: POLICE_FACILITY_TYPES.map(facility => ({ label: facility.type, color: facility.color })),
+    dfesStations: DFES_STATION_TYPES.map(station => ({
+        label: `${station.type} — ${station.label}`,
+        color: station.color,
+    })),
     responseCoverage: [
         { label: 'Police Response Coverage: under 5 min', swatchModifier: 'response-green' },
         { label: 'Police Response Coverage: 5–10 min', swatchModifier: 'response-yellow' },
@@ -27,9 +33,23 @@ const LEGEND_ENTRIES: Record<MapLayerGroup, LegendEntry[]> = {
         { label: 'Police Response Coverage: over 15 min', swatchModifier: 'response-red' },
         { label: 'Police Response Coverage: unreachable', swatchModifier: 'response-unreachable' },
     ],
+    fireResponseCoverage: [
+        { label: 'Fire Response Coverage: under 5 min', swatchModifier: 'response-green' },
+        { label: 'Fire Response Coverage: 5–10 min', swatchModifier: 'response-yellow' },
+        { label: 'Fire Response Coverage: 10–15 min', swatchModifier: 'response-orange' },
+        { label: 'Fire Response Coverage: over 15 min', swatchModifier: 'response-red' },
+        { label: 'Fire Response Coverage: unreachable', swatchModifier: 'response-unreachable' },
+    ],
 };
 
-const LEGEND_GROUP_ORDER: MapLayerGroup[] = ['roads', 'boundaries', 'facilities', 'responseCoverage'];
+const LEGEND_GROUP_ORDER: MapLayerGroup[] = [
+    'roads',
+    'boundaries',
+    'facilities',
+    'dfesStations',
+    'responseCoverage',
+    'fireResponseCoverage',
+];
 
 /** Open on desktop; collapsed on narrow viewports so the map stays readable on mobile. */
 function getInitialPanelOpen() {
@@ -146,6 +166,14 @@ function MapView({
                             />
                             Police Stations
                         </label>
+                        <label>
+                            <input
+                                type="checkbox"
+                                checked={layerVisibility?.dfesStations ?? true}
+                                onChange={event => onLayerVisibilityChange('dfesStations', event.currentTarget.checked)}
+                            />
+                            DFES Stations
+                        </label>
                         <hr className="map-layer-control__separator" />
                         <p className="map-layer-control__section-title">Processed Layers</p>
                         <label>
@@ -155,6 +183,14 @@ function MapView({
                                 onChange={event => onLayerVisibilityChange('responseCoverage', event.currentTarget.checked)}
                             />
                             Police Response Coverage
+                        </label>
+                        <label>
+                            <input
+                                type="checkbox"
+                                checked={layerVisibility?.fireResponseCoverage ?? false}
+                                onChange={event => onLayerVisibilityChange('fireResponseCoverage', event.currentTarget.checked)}
+                            />
+                            Fire Response Coverage
                         </label>
                     </details>
                 )}

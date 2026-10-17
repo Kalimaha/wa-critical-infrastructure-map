@@ -102,6 +102,69 @@ def test_every_boundary_cell_gets_a_coverage_row(con, config):
     assert {"green", "unreachable"} <= classes
 
 
+def test_non_fire_type_is_not_a_station_source(config: rc.CoverageConfig, tmp_path: Path):
+    write_geojson(tmp_path / "typed_stations.geojson", [
+        {
+            "type": "Feature",
+            "properties": {"NAME": "Brigade", "type": "BFB"},
+            "geometry": {"type": "Point", "coordinates": [115.8001, ROAD_LATITUDE + 0.001]},
+        },
+        {
+            "type": "Feature",
+            "properties": {"NAME": "SES Unit", "type": "SESU"},
+            "geometry": {"type": "Point", "coordinates": [115.8002, ROAD_LATITUDE + 0.001]},
+        },
+    ])
+    typed = dataclasses.replace(
+        config,
+        station_path=tmp_path / "typed_stations.geojson",
+        output_dir=tmp_path / "typed-out",
+        layer_name="Typed_Coverage",
+        station_name_column="NAME",
+        station_type_column="type",
+        station_types=("BFB",),
+    )
+    con = rc.connect(typed)
+    rc.load_inputs(con, typed)
+    rc.build_road_graph(con)
+    rc.create_station_sources(con)
+    sources = con.execute(
+        "SELECT DISTINCT s.name FROM station_sources JOIN stations AS s USING (station_id)"
+    ).fetchall()
+    names = con.execute("SELECT name FROM stations ORDER BY name").fetchall()
+    con.close()
+
+    assert sources == [("Brigade",)]
+    assert names == [("Brigade",)]
+
+
+def test_for_dfes_uses_fire_station_types(tmp_path: Path):
+    police = rc.CoverageConfig.for_repository(tmp_path)
+    dfes = rc.CoverageConfig.for_dfes(tmp_path)
+
+    assert police.station_name_column == "NAME"
+    assert police.station_types is None
+    assert "each police station" in rc.build_metadata(police)["method"]
+    assert "station_types" not in rc.build_metadata(police)
+
+    assert dfes.road_path == police.road_path
+    assert dfes.boundary_path == police.boundary_path
+    assert dfes.output_dir == police.output_dir
+    assert dfes.cache_dir == police.cache_dir
+    assert dfes.road_speed_kmh == police.road_speed_kmh
+    assert dfes.station_path == (
+        tmp_path / "data" / "raw" / "DFES_Stations_DFES_023_WA_GDA2020_Public.geojson"
+    )
+    assert dfes.station_crs == "EPSG:7844"
+    assert dfes.layer_name == "DFES_Response_Coverage"
+    assert dfes.station_name_column == "displaynam"
+    assert dfes.station_type_column == "type"
+    assert dfes.station_types == ("BFB", "VFRS", "VFESU", "CFRS", "PFRS")
+    metadata = rc.build_metadata(dfes)
+    assert "each DFES fire station" in metadata["method"]
+    assert metadata["station_types"] == ["BFB", "VFRS", "VFESU", "CFRS", "PFRS"]
+
+
 def test_station_without_nearby_road_contributes_nothing(con):
     station_ids = con.execute(
         "SELECT DISTINCT s.name FROM station_sources JOIN stations AS s USING (station_id)"

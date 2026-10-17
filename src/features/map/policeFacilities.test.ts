@@ -1,11 +1,21 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+    DFES_CLUSTER_COLOR,
+    DFES_STATION_FALLBACK_COLOR,
+    DFES_STATION_TYPES,
+    getDfesStationColorExpression,
+} from './dfesStations';
+import {
     createPoliceFacilityClusterSource,
     expandPoliceFacilityCluster,
     getPoliceFacilityClusterLayerIds,
     getPoliceFacilityClusterLayers,
+    getPoliceFacilityColorExpression,
     getPoliceFacilityTileRange,
     normalizePoliceFacilityFeature,
+    POLICE_FACILITY_CLUSTER_COLOR,
+    POLICE_FACILITY_TYPE_ATTRIBUTE,
+    POLICE_FACILITY_TYPES,
 } from './policeFacilities';
 
 describe('police facility feature normalization', () => {
@@ -83,6 +93,19 @@ describe('police facility clustering', () => {
         });
     });
 
+    it('overrides cluster and unclustered circle colors when asked', () => {
+        const layers = getPoliceFacilityClusterLayers('dfes-stations-cluster', 'dfes-stations', {
+            cluster: DFES_CLUSTER_COLOR,
+            unclustered: getDfesStationColorExpression(),
+        });
+
+        expect(layers.cluster.paint).toMatchObject({ 'circle-color': '#37474F' });
+        expect(layers.unclustered.paint).toMatchObject({
+            'circle-color': getDfesStationColorExpression(),
+        });
+        expect(layers.count.paint).toMatchObject({ 'text-color': '#ffffff' });
+    });
+
     it('zooms to a cluster using MapLibre’s expansion zoom', async () => {
         const getClusterExpansionZoom = vi.fn().mockResolvedValue(9);
         const easeTo = vi.fn();
@@ -96,5 +119,64 @@ describe('police facility clustering', () => {
 
         expect(getClusterExpansionZoom).toHaveBeenCalledWith(42);
         expect(easeTo).toHaveBeenCalledWith({ center: [115, -32], zoom: 9, duration: 250 });
+    });
+});
+
+describe('police facility colours', () => {
+    it('maps each description to a legend colour', () => {
+        expect(POLICE_FACILITY_TYPES.map(facility => [facility.type, facility.color])).toEqual([
+            ['Police Station', '#0033A1'],
+            ['District Office', '#039BE5'],
+            ['Multi Functional Police Facility', '#00695C'],
+            ['Multi-Jurisdictional Police Facility', '#5E35B1'],
+            ['Police Headquarters', '#6D4C41'],
+        ]);
+        expect(POLICE_FACILITY_CLUSTER_COLOR).toBe('#0A1F44');
+    });
+
+    it('paints unclustered points from DESCRIPTIO, with a navy fallback', () => {
+        expect(getPoliceFacilityColorExpression()).toEqual([
+            'match',
+            ['get', POLICE_FACILITY_TYPE_ATTRIBUTE],
+            'Police Station', '#0033A1',
+            'District Office', '#039BE5',
+            'Multi Functional Police Facility', '#00695C',
+            'Multi-Jurisdictional Police Facility', '#5E35B1',
+            'Police Headquarters', '#6D4C41',
+            POLICE_FACILITY_CLUSTER_COLOR,
+        ]);
+    });
+});
+
+describe('DFES station colours', () => {
+    it('maps each station type to a legend label and colour', () => {
+        expect(DFES_STATION_TYPES.map(station => [station.type, station.label, station.color])).toEqual([
+            ['BFB', 'Bush Fire Brigade', '#E6A817'],
+            ['VFRS', 'Volunteer Fire and Rescue', '#D32F2F'],
+            ['VFESU', 'Volunteer Fire and Emergency', '#AD1457'],
+            ['CFRS', 'Career Fire and Rescue', '#B71C1C'],
+            ['PFRS', 'Private Fire and Rescue', '#6A1B9A'],
+            ['SESU', 'State Emergency Service', '#EF6C00'],
+            ['VMRS', 'Volunteer Marine Rescue', '#00838F'],
+            ['DFES', 'DFES offices and support', '#546E7A'],
+        ]);
+        expect(DFES_CLUSTER_COLOR).toBe('#37474F');
+        expect(DFES_STATION_FALLBACK_COLOR).toBe('#37474F');
+    });
+
+    it('paints unclustered points from the type property, with a neutral fallback', () => {
+        expect(getDfesStationColorExpression()).toEqual([
+            'match',
+            ['get', 'type'],
+            'BFB', '#E6A817',
+            'VFRS', '#D32F2F',
+            'VFESU', '#AD1457',
+            'CFRS', '#B71C1C',
+            'PFRS', '#6A1B9A',
+            'SESU', '#EF6C00',
+            'VMRS', '#00838F',
+            'DFES', '#546E7A',
+            '#37474F',
+        ]);
     });
 });

@@ -4,3 +4,6 @@ storybook-static/
 .vite/
 .aider*
 __pycache__/
+.layout-screenshots/
+.pytest_cache/
+.venv/

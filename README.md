@@ -32,8 +32,8 @@ Useful frontend commands:
 | --- | --- |
 | `npm run dev` | Vite dev server with the PMTiles proxy |
 | `npm run build` | Typecheck, then write `dist/` |
-| `npm run deploy` | Sync local `dist/` to the S3 prod prefix, then upload generated PMTiles to the bucket root |
-| `npm run deploy:tiles` | Upload generated PMTiles from `data/processed/` to the bucket root |
+| `npm run deploy` | Sync local `dist/` to the S3 prod prefix, then upload `DFES_Stations.pmtiles` and `DFES_Response_Coverage.pmtiles` from `data/processed/` to the bucket root |
+| `npm run deploy:tiles` | Upload `DFES_Stations.pmtiles` and `DFES_Response_Coverage.pmtiles` from `data/processed/` to the bucket root |
 | `npm run deploy:prod` | `npm run build` then `npm run deploy` |
 | `npm run preview` | Serve the production build locally |
 | `npm run typecheck` | `tsc --noEmit` |
@@ -67,13 +67,14 @@ Unit tests run in jsdom. Storybook tests run in headless Chromium via Playwright
 
 ```bash
 npm test
+uv run pytest
 npx playwright install --with-deps chromium
 npm run test-storybook
 ```
 
 `npm test` is `vitest run --project=unit` and covers `src/**/*.test.ts`. `npm run test-storybook` is `vitest run --project=storybook` and exercises stories under `src/**/*.stories.@(ts|tsx)`.
 
-Pull requests to `main` run both jobs in [`.github/workflows/pull-request-tests.yml`](.github/workflows/pull-request-tests.yml). Storybook CI installs Playwright Chromium first, the same as the local Storybook command above.
+Pull requests to `main` run the unit and Storybook jobs, and `uv run pytest` via the `python-tests` job, in [`.github/workflows/pull-request-tests.yml`](.github/workflows/pull-request-tests.yml). Storybook CI installs Playwright Chromium first, the same as the local Storybook command above.
 
 Some unit tests parse notebooks as raw JSON (for example `src/features/map/pmtilesConversion.test.ts`) so the `tippecanoe` flags and kept attributes stay in sync with what the map reads.
 
@@ -121,12 +122,15 @@ uv run pytest
 | `data/processed/` | Generated PMTiles, the DuckDB working database, and `cache/` (GeoParquet copies of the raw inputs and the H3 grid). Gitignored. |
 | `notebooks/02-geojson-to-pmtiles.ipynb` | Convert roads, LGA boundaries, and police facilities to PMTiles. |
 | `notebooks/03-h3-police-response-coverage.ipynb` | Build the H3 response-coverage grid and export PMTiles. |
+| `notebooks/04-dfes-stations-and-response-coverage.ipynb` | DFES station PMTiles plus fire response coverage, same pipeline as notebook 03, fire-service stations only. |
+
+Notebooks 03 and 04 call `src/wa_critical_infrastructure_map/response_coverage.py`.
 
 Road source data does not include travel speeds. The coverage notebook uses a configurable speed profile; treat those times as a study estimate, not an operational SLA.
 
 ### Response coverage — known limitations
 
-- **Red** means travel time **>15 min** **or** unreachable on the modelled network.
+- **Red** means reachable travel time over 15 minutes. **Unreachable** is a separate class (no station-reachable road within the snap cap).
 - Cells can be orange/red even when no road sits inside the hex: travel time is computed via nearest-road snap to the cell centroid.
 - Dense roads far from stations stay red when modelled travel still exceeds 15 minutes.
 - LGA polyfill paints land broadly, including areas where the Main Roads network is sparse.
@@ -137,10 +141,12 @@ Entry: `src/main.tsx` → `src/features/map/MapApp.tsx` → `usePmtilesMap` + `M
 
 Layer groups toggled in the UI (`MapLayerGroup`): `roads`, `boundaries`, `facilities`, `dfesStations`, `responseCoverage`, `fireResponseCoverage`.
 
+The chrome is a header, a left Map panel (accordion sections Layers and Legend), a center map canvas, a right Info panel (About and Data Sources), and a footer. The panel titles are the words Map and Info. Dark mode follows `prefers-color-scheme`. The page is installable (`public/manifest.webmanifest`, Apple touch icon).
+
 | Concern | Where |
 | --- | --- |
 | Map init, PMTiles protocol, layer paint, visibility | `src/features/map/usePmtilesMap.ts` |
-| Chrome: header, legend, layer toggles, status | `src/features/map/MapView.tsx` |
+| Shell: header, left Map panel (Layers and Legend), center map canvas, right Info panel (About and Data Sources), footer | `src/features/map/MapView.tsx` |
 | Police and DFES points: decode PMTiles, cluster on a GeoJSON source | `src/features/map/policeFacilities.ts` |
 | Click hit-testing and popups | `src/features/map/featureHitTest.ts`, `featurePopup.ts` |
 | Attribute names the tiles must keep | `src/features/map/roadAttributes.ts` |

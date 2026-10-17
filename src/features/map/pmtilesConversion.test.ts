@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import notebookSource from '../../../notebooks/02-geojson-to-pmtiles.ipynb?raw';
+import dfesNotebookSource from '../../../notebooks/04-dfes-stations-and-response-coverage.ipynb?raw';
 import { BOUNDARY_NAME_ATTRIBUTE, ROAD_TILE_ATTRIBUTES } from './roadAttributes';
 
 const notebook = JSON.parse(notebookSource) as {
+    cells: Array<{ cell_type: string; source: string[] }>;
+};
+
+const dfesNotebook = JSON.parse(dfesNotebookSource) as {
     cells: Array<{ cell_type: string; source: string[] }>;
 };
 
@@ -53,5 +58,20 @@ describe('PMTiles conversion', () => {
     it('leaves the LGA name attribute in the tile', () => {
         expect(includedAttributes(boundaryCommand)).toEqual([]);
         expect(BOUNDARY_NAME_ATTRIBUTE).toBe('name');
+    });
+
+    it('converts DFES stations with the same point-tile flags as police facilities', () => {
+        const commands = dfesNotebook.cells
+            .filter(cell => cell.cell_type === 'code')
+            .map(cell => cell.source.join(''))
+            .filter(source => source.includes('tippecanoe_cmd'));
+        expect(commands).toHaveLength(1);
+        const [stationCommand] = commands;
+        expect(stationCommand).toContain('DFES_Stations_DFES_023_WA_GDA2020_Public.geojson');
+        expect(stationCommand).toContain('"-zg"');
+        expect(stationCommand).toContain('"--drop-densest-as-needed"');
+        expect(stationCommand).toContain('"--extend-zooms-if-still-dropping"');
+        expect(stationCommand).toContain('"--simplify-only-low-zooms"');
+        expect(stationCommand).toContain('DFES_Stations.pmtiles');
     });
 });

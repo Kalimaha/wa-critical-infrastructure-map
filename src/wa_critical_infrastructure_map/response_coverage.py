@@ -11,7 +11,7 @@ import hashlib
 import json
 import shutil
 import subprocess
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -63,6 +63,8 @@ class CoverageConfig:
 
     Each input uses a different CRS, so ST_Transform is given the source CRS
     explicitly. Distances and lengths are measured in ``projected_crs`` metres.
+    ``station_types`` keeps only those values of ``station_type_column``; leave
+    it unset to include every point feature.
     """
 
     road_path: Path
@@ -79,6 +81,10 @@ class CoverageConfig:
     max_snap_metres: float = 5000.0
     max_response_minutes: float = 15.0
     road_speed_kmh: dict[str, float] = field(default_factory=lambda: dict(DEFAULT_ROAD_SPEED_KMH))
+    station_name_column: str = "NAME"
+    station_type_column: str | None = None
+    station_types: tuple[str, ...] | None = None
+    station_description: str = "police station"
 
     @classmethod
     def for_repository(cls, repository_root: Path) -> CoverageConfig:
@@ -90,6 +96,22 @@ class CoverageConfig:
             boundary_path=raw_dir / "LGA_Boundaries_LGATE_233_WA_GDA2020_Public.geojson",
             output_dir=processed_dir,
             cache_dir=processed_dir / "cache",
+        )
+
+    @classmethod
+    def for_dfes(cls, repository_root: Path) -> CoverageConfig:
+        """Fire-station coverage on the same roads and LGA boundaries as the police run."""
+        return replace(
+            cls.for_repository(repository_root),
+            station_path=(
+                repository_root / "data" / "raw" / "DFES_Stations_DFES_023_WA_GDA2020_Public.geojson"
+            ),
+            station_crs="EPSG:7844",
+            layer_name="DFES_Response_Coverage",
+            station_name_column="displaynam",
+            station_type_column="type",
+            station_types=("BFB", "VFRS", "VFESU", "CFRS", "PFRS"),
+            station_description="DFES fire station",
         )
 
     @property
@@ -194,21 +216,39 @@ def load_inputs(con: duckdb.DuckDBPyConnection, config: CoverageConfig) -> dict[
           AND speed_kmh > 0
     """)
 
+    # Column names come from CoverageConfig, not from outside input.
+    type_column = (
+        f",\n            {config.station_type_column} AS station_type"
+        if config.station_type_column is not None
+        else ""
+    )
     con.execute(f"""
         CREATE OR REPLACE TEMP TABLE raw_stations AS
         SELECT
             OGC_FID AS station_id,
-            NAME AS name,
+            {config.station_name_column} AS name{type_column},
             geom,
             ST_Transform(geom, '{config.station_crs}', '{config.projected_crs}', always_xy := true)
                 AS projected_geom
         FROM {station_source}
     """)
-    con.execute("""
-        CREATE OR REPLACE TABLE stations AS
-        SELECT * FROM raw_stations
-        WHERE ST_IsValid(geom) AND ST_GeometryType(geom) = 'POINT'
-    """)
+    if config.station_types is None:
+        con.execute("""
+            CREATE OR REPLACE TABLE stations AS
+            SELECT * FROM raw_stations
+            WHERE ST_IsValid(geom) AND ST_GeometryType(geom) = 'POINT'
+        """)
+    else:
+        con.execute(
+            """
+            CREATE OR REPLACE TABLE stations AS
+            SELECT * FROM raw_stations
+            WHERE ST_IsValid(geom)
+              AND ST_GeometryType(geom) = 'POINT'
+              AND station_type IN (SELECT unnest(?))
+            """,
+            [list(config.station_types)],
+        )
 
     con.execute(f"""
         CREATE OR REPLACE TEMP TABLE raw_boundaries AS
@@ -562,6 +602,11 @@ def build_metadata(config: CoverageConfig) -> dict[str, Any]:
         "maximum_sample_distance_metres": config.max_snap_metres,
         "maximum_response_minutes": config.max_response_minutes,
         "speed_profile_kmh": config.road_speed_kmh,
+        **(
+            {"station_types": list(config.station_types)}
+            if config.station_types is not None
+            else {}
+        ),
         "classification_thresholds_minutes": {
             "green": "< 5",
             "yellow": "5-10",
@@ -572,7 +617,7 @@ def build_metadata(config: CoverageConfig) -> dict[str, Any]:
         "method": (
             f"Dense h3.polygon_to_cells polyfill of the WA LGA boundary union at resolution {config.h3_resolution}; "
             "cell→road snap to nearest station-reachable segment within maximum_sample_distance_metres; "
-            "shortest road-network travel time from each police station; "
+            f"shortest road-network travel time from each {config.station_description}; "
             "response class uses the fastest reachable station; "
             "unreachable when reachable_stations=0 (not painted red)."
         ),

@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+import { DFES_CLUSTER_COLOR, getDfesStationColorExpression } from './dfesStations';
 import { createFeaturePopup } from './featurePopup';
 import { findFeatureAtPoint, type QueryGeometry } from './featureHitTest';
 import {
     createPoliceFacilityClusterSource,
     expandPoliceFacilityCluster,
     getPoliceFacilityClusterLayers,
+    getPoliceFacilityColorExpression,
     loadPoliceFacilityFeatures,
+    POLICE_FACILITY_CLUSTER_COLOR,
 } from './policeFacilities';
 import { ROAD_NETWORK_TYPE_ATTRIBUTE } from './roadAttributes';
 
@@ -29,14 +32,37 @@ export function getPoliceResponseCoveragePmtilesUrl(origin: string = PMTILES_ORI
 
 const POLICE_RESPONSE_COVERAGE_PMTILES_URL = getPoliceResponseCoveragePmtilesUrl();
 
-export type MapLayerGroup = 'roads' | 'boundaries' | 'facilities' | 'responseCoverage';
+const DFES_STATIONS_PMTILES_URL = `${PMTILES_ORIGIN}/DFES_Stations.pmtiles`;
+/** Statewide DFES response-coverage archive. */
+export const DFES_RESPONSE_COVERAGE_PMTILES_FILE = 'DFES_Response_Coverage.pmtiles';
+
+export function getDfesResponseCoveragePmtilesUrl(origin: string = PMTILES_ORIGIN): string {
+    return `${origin}/${DFES_RESPONSE_COVERAGE_PMTILES_FILE}`;
+}
+
+const DFES_RESPONSE_COVERAGE_PMTILES_URL = getDfesResponseCoveragePmtilesUrl();
+
+const RESPONSE_COVERAGE_CLASS_STYLES = [
+    ['green', '#2ca84b'],
+    ['yellow', '#f4c542'],
+    ['orange', '#ef7d32'],
+    ['red', '#c83b3b'],
+    ['unreachable', '#424242'],
+] as const;
+
+const POLICE_FACILITIES_SOURCE_ID = 'police-facilities-cluster';
+const DFES_STATIONS_SOURCE_ID = 'dfes-stations-cluster';
+
+export type MapLayerGroup = 'roads' | 'boundaries' | 'facilities' | 'dfesStations' | 'responseCoverage' | 'fireResponseCoverage';
 export type MapLayerVisibility = Record<MapLayerGroup, boolean>;
 
 export const DEFAULT_LAYER_VISIBILITY: MapLayerVisibility = {
     roads: true,
     boundaries: true,
     facilities: true,
+    dfesStations: true,
     responseCoverage: false,
+    fireResponseCoverage: false,
 };
 
 const ROAD_WIDTH = 0.8;
@@ -145,7 +171,9 @@ export function usePmtilesMap() {
         roads: [],
         boundaries: [],
         facilities: [],
+        dfesStations: [],
         responseCoverage: [],
+        fireResponseCoverage: [],
     });
     const [status, setStatus] = useState('Loading…');
     const [loading, setLoading] = useState(true);
@@ -185,6 +213,28 @@ export function usePmtilesMap() {
                 const archive = new pmtiles.PMTiles(PMTILES_URL);
                 const boundaryArchive = new pmtiles.PMTiles(LGA_BOUNDARIES_PMTILES_URL);
                 const policeFacilitiesArchive = new pmtiles.PMTiles(POLICE_FACILITIES_PMTILES_URL);
+                // A missing DFES archive must not block Ready. Police facilities still fail the map.
+                const dfesStationFeaturesPromise = (async () => {
+                    try {
+                        const dfesStationsArchive = new pmtiles.PMTiles(DFES_STATIONS_PMTILES_URL);
+                        const [dfesHeader, dfesMetadata] = await Promise.all([
+                            dfesStationsArchive.getHeader(),
+                            dfesStationsArchive.getMetadata(),
+                        ]);
+                        const features = await loadPoliceFacilityFeatures(
+                            dfesStationsArchive,
+                            dfesHeader,
+                            getVectorLayers(dfesMetadata),
+                        );
+                        if (features.length === 0) {
+                            console.warn('No DFES station points were found in the PMTiles archive.');
+                        }
+                        return features;
+                    } catch (dfesError) {
+                        console.warn(dfesError);
+                        return [];
+                    }
+                })();
                 protocol.add(archive);
                 protocol.add(boundaryArchive);
                 const [[header, metadata], [boundaryHeader, boundaryMetadata], [facilityHeader, facilityMetadata]] = await Promise.all([
@@ -193,11 +243,14 @@ export function usePmtilesMap() {
                     Promise.all([policeFacilitiesArchive.getHeader(), policeFacilitiesArchive.getMetadata()]),
                 ]);
                 const facilityLayerIds = getVectorLayers(facilityMetadata);
-                const policeFacilityFeatures = await loadPoliceFacilityFeatures(
-                    policeFacilitiesArchive,
-                    facilityHeader,
-                    facilityLayerIds,
-                );
+                const [policeFacilityFeatures, dfesStationFeatures] = await Promise.all([
+                    loadPoliceFacilityFeatures(
+                        policeFacilitiesArchive,
+                        facilityHeader,
+                        facilityLayerIds,
+                    ),
+                    dfesStationFeaturesPromise,
+                ]);
                 const container = mapContainer.current;
                 if (disposed || !container) return;
 
@@ -232,8 +285,11 @@ export function usePmtilesMap() {
                             type: 'vector',
                             url: `pmtiles://${LGA_BOUNDARIES_PMTILES_URL}`,
                         });
-                        mapInstance.addSource('police-facilities-cluster', {
+                        mapInstance.addSource(POLICE_FACILITIES_SOURCE_ID, {
                             ...createPoliceFacilityClusterSource(policeFacilityFeatures),
+                        });
+                        mapInstance.addSource(DFES_STATIONS_SOURCE_ID, {
+                            ...createPoliceFacilityClusterSource(dfesStationFeatures),
                         });
                         const layers = getVectorLayers(metadata);
                         const boundaryLayers = getVectorLayers(boundaryMetadata);
@@ -242,7 +298,9 @@ export function usePmtilesMap() {
                         const roadStyleLayerIds: string[] = [];
                         const boundaryStyleLayerIds: string[] = [];
                         const facilityStyleLayerIds: string[] = [];
+                        const dfesStyleLayerIds: string[] = [];
                         const responseCoverageStyleLayerIds: string[] = [];
+                        const fireResponseCoverageStyleLayerIds: string[] = [];
 
                         // Response coverage is WIP/large — attach after the core map is up so
                         // a missing/bad archive cannot block Ready / Storybook CI.
@@ -262,15 +320,8 @@ export function usePmtilesMap() {
                                 });
                                 responseCoverageLayerIds.forEach((id, index) => {
                                     const responseClassLayer = `police-response-coverage-${index}`;
-                                    const responseClassStyles = [
-                                        ['green', '#2ca84b'],
-                                        ['yellow', '#f4c542'],
-                                        ['orange', '#ef7d32'],
-                                        ['red', '#c83b3b'],
-                                        ['unreachable', '#424242'],
-                                    ] as const;
 
-                                    responseClassStyles.forEach(([responseClass, color]) => {
+                                    RESPONSE_COVERAGE_CLASS_STYLES.forEach(([responseClass, color]) => {
                                         const layerId = `${responseClassLayer}-${responseClass}`;
                                         mapInstance.addLayer({
                                             id: layerId,
@@ -293,6 +344,52 @@ export function usePmtilesMap() {
                                     mapInstance,
                                     responseCoverageStyleLayerIds,
                                     layerVisibilityRef.current.responseCoverage,
+                                );
+                            } catch (coverageError) {
+                                console.error(coverageError);
+                            }
+                        })();
+
+                        // Fire response coverage attaches the same way: a missing archive is logged, not fatal.
+                        void (async () => {
+                            try {
+                                const fireResponseCoverageArchive = new pmtiles.PMTiles(DFES_RESPONSE_COVERAGE_PMTILES_URL);
+                                protocol.add(fireResponseCoverageArchive);
+                                const [, fireResponseCoverageMetadata] = await Promise.all([
+                                    fireResponseCoverageArchive.getHeader(),
+                                    fireResponseCoverageArchive.getMetadata(),
+                                ]);
+                                if (disposed || !mapRef.current) return;
+                                const fireResponseCoverageLayerIds = getVectorLayers(fireResponseCoverageMetadata);
+                                mapInstance.addSource('fire-response-coverage', {
+                                    type: 'vector',
+                                    url: `pmtiles://${DFES_RESPONSE_COVERAGE_PMTILES_URL}`,
+                                });
+                                fireResponseCoverageLayerIds.forEach((id, index) => {
+                                    const responseClassLayer = `fire-response-coverage-${index}`;
+
+                                    RESPONSE_COVERAGE_CLASS_STYLES.forEach(([responseClass, color]) => {
+                                        const layerId = `${responseClassLayer}-${responseClass}`;
+                                        mapInstance.addLayer({
+                                            id: layerId,
+                                            type: 'fill',
+                                            source: 'fire-response-coverage',
+                                            'source-layer': id,
+                                            filter: ['==', ['get', 'response_class'], responseClass],
+                                            paint: { 'fill-color': color, 'fill-opacity': 0.7 },
+                                        }, roadStyleLayerIds[0]);
+                                        clickableLayers.push(layerId);
+                                        fireResponseCoverageStyleLayerIds.push(layerId);
+                                    });
+                                });
+                                layerGroupIdsRef.current = {
+                                    ...layerGroupIdsRef.current,
+                                    fireResponseCoverage: [...fireResponseCoverageStyleLayerIds],
+                                };
+                                applyLayerGroupVisibility(
+                                    mapInstance,
+                                    fireResponseCoverageStyleLayerIds,
+                                    layerVisibilityRef.current.fireResponseCoverage,
                                 );
                             } catch (coverageError) {
                                 console.error(coverageError);
@@ -371,8 +468,12 @@ export function usePmtilesMap() {
                         });
 
                         const clusterLayers = getPoliceFacilityClusterLayers(
-                            'police-facilities-cluster',
+                            POLICE_FACILITIES_SOURCE_ID,
                             'police-facilities',
+                            {
+                                cluster: POLICE_FACILITY_CLUSTER_COLOR,
+                                unclustered: getPoliceFacilityColorExpression(),
+                            },
                         );
                         mapInstance.addLayer(clusterLayers.cluster);
                         mapInstance.addLayer(clusterLayers.count);
@@ -384,6 +485,24 @@ export function usePmtilesMap() {
                             clusterLayers.unclustered.id,
                         );
 
+                        const dfesClusterLayers = getPoliceFacilityClusterLayers(
+                            DFES_STATIONS_SOURCE_ID,
+                            'dfes-stations',
+                            {
+                                cluster: DFES_CLUSTER_COLOR,
+                                unclustered: getDfesStationColorExpression(),
+                            },
+                        );
+                        mapInstance.addLayer(dfesClusterLayers.cluster);
+                        mapInstance.addLayer(dfesClusterLayers.count);
+                        mapInstance.addLayer(dfesClusterLayers.unclustered);
+                        clickableLayers.push(dfesClusterLayers.cluster.id, dfesClusterLayers.unclustered.id);
+                        dfesStyleLayerIds.push(
+                            dfesClusterLayers.cluster.id,
+                            dfesClusterLayers.count.id,
+                            dfesClusterLayers.unclustered.id,
+                        );
+
                         if (policeFacilityFeatures.length === 0) {
                             console.warn('No police facility points were found in the PMTiles archive.');
                         }
@@ -392,8 +511,15 @@ export function usePmtilesMap() {
                             roads: roadStyleLayerIds,
                             boundaries: boundaryStyleLayerIds,
                             facilities: facilityStyleLayerIds,
+                            dfesStations: dfesStyleLayerIds,
                             responseCoverage: responseCoverageStyleLayerIds,
+                            fireResponseCoverage: fireResponseCoverageStyleLayerIds,
                         };
+                        applyLayerGroupVisibility(
+                            mapInstance,
+                            dfesStyleLayerIds,
+                            layerVisibilityRef.current.dfesStations,
+                        );
 
                         mapInstance.on('click', event => {
                             const feature = findFeatureAtPoint(
@@ -410,8 +536,10 @@ export function usePmtilesMap() {
                                 const clusterId = feature.properties?.cluster_id;
                                 if (typeof clusterId !== 'number') return;
                                 if (feature.geometry.type !== 'Point') return;
+                                const sourceId = feature.source;
+                                if (sourceId !== POLICE_FACILITIES_SOURCE_ID && sourceId !== DFES_STATIONS_SOURCE_ID) return;
                                 const [lng, lat] = feature.geometry.coordinates;
-                                const clusterSource = mapInstance.getSource('police-facilities-cluster') as GeoJSONSource | undefined;
+                                const clusterSource = mapInstance.getSource(sourceId) as GeoJSONSource | undefined;
                                 if (!clusterSource) return;
                                 void expandPoliceFacilityCluster(clusterSource, mapInstance, clusterId, [lng, lat]);
                                 return;
@@ -432,7 +560,7 @@ export function usePmtilesMap() {
                             ) ? 'pointer' : '';
                         });
 
-                        setStatus(`Vector · roads: ${layers.length}, LGA boundaries: ${boundaryLayers.length}, police facilities: ${policeFacilityFeatures.length} · zoom ${header.minZoom}–${header.maxZoom}`);
+                        setStatus(`Vector · roads: ${layers.length}, LGA boundaries: ${boundaryLayers.length}, police facilities: ${policeFacilityFeatures.length}, DFES stations: ${dfesStationFeatures.length} · zoom ${header.minZoom}–${header.maxZoom}`);
                     } else {
                         mapInstance.addSource('data', {
                             type: 'raster',
@@ -472,7 +600,9 @@ export function usePmtilesMap() {
                 roads: [],
                 boundaries: [],
                 facilities: [],
+                dfesStations: [],
                 responseCoverage: [],
+                fireResponseCoverage: [],
             };
             removeProtocol?.();
         };

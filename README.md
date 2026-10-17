@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/Kalimaha/wa-critical-infrastructure-map/actions/workflows/pull-request-tests.yml/badge.svg?event=pull_request)](https://github.com/Kalimaha/wa-critical-infrastructure-map/actions/workflows/pull-request-tests.yml)
 
-An interactive web map of Western Australia's critical infrastructure. It is a study case, currently showing the state road network, local government (LGA) boundaries, police facilities, and an H3 grid of estimated police response times.
+An interactive web map of Western Australia's critical infrastructure. It is a study case, currently showing the state road network, local government (LGA) boundaries, police facilities, DFES stations, and H3 grids of estimated police and fire response times.
 
 The map is a React + Vite + MapLibre GL app. Vector tiles are served as [PMTiles](https://docs.protomaps.com/pmtiles/) from S3. Data processing lives in Jupyter notebooks and a `uv`-managed Python environment.
 
@@ -32,7 +32,8 @@ Useful frontend commands:
 | --- | --- |
 | `npm run dev` | Vite dev server with the PMTiles proxy |
 | `npm run build` | Typecheck, then write `dist/` |
-| `npm run deploy` | Sync local `dist/` to the S3 prod prefix (requires AWS CLI + credentials) |
+| `npm run deploy` | Sync local `dist/` to the S3 prod prefix, then upload generated PMTiles to the bucket root |
+| `npm run deploy:tiles` | Upload generated PMTiles from `data/processed/` to the bucket root |
 | `npm run deploy:prod` | `npm run build` then `npm run deploy` |
 | `npm run preview` | Serve the production build locally |
 | `npm run typecheck` | `tsc --noEmit` |
@@ -45,7 +46,7 @@ Production is the static site under the `dist/` prefix of the `wa-critical-infra
 
 [https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/dist/index.html](https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/dist/index.html)
 
-`npm run deploy` runs `aws s3 sync` of `./dist/` to `s3://wa-critical-infrastructure-map/dist/` with `--delete`. It does **not** touch PMTiles or other objects at the bucket root.
+`npm run deploy` runs `aws s3 sync` of `./dist/` to `s3://wa-critical-infrastructure-map/dist/` with `--delete`, then copies `DFES_Stations.pmtiles` and `DFES_Response_Coverage.pmtiles` from `data/processed/` to the bucket root when those files exist. That copy does not delete other bucket objects, so the road, boundary, and police archives stay in place. `npm run deploy:tiles` uploads only those PMTiles.
 
 **Cloud Agent:** ask to “build and deploy”. The agent runs `npm run deploy:prod`. `deploy` installs AWS CLI via [`scripts/install-aws-cli.sh`](scripts/install-aws-cli.sh) if needed. The Cursor environment must provide secrets `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_DEFAULT_REGION` (`ap-southeast-2`).
 
@@ -58,7 +59,7 @@ aws configure   # or: aws sso login
 npm run deploy:prod
 ```
 
-IAM needs at least `s3:ListBucket` on the bucket and `s3:PutObject` / `s3:DeleteObject` on the `dist/` prefix.
+IAM needs `s3:ListBucket` on the bucket, `s3:PutObject` / `s3:DeleteObject` on the `dist/` prefix, and `s3:PutObject` on the PMTiles objects at the bucket root.
 
 ## Tests
 
@@ -92,6 +93,8 @@ The map switches tile URLs with `import.meta.env.DEV`: `/pmtiles/...` in develop
 - `LGA_Boundaries.pmtiles`
 - `Police_Facilities.pmtiles`
 - `Police_Response_Coverage_r5.pmtiles`
+- `DFES_Stations.pmtiles`
+- `DFES_Response_Coverage.pmtiles`
 
 ### uv and Python
 
@@ -132,17 +135,17 @@ Road source data does not include travel speeds. The coverage notebook uses a co
 
 Entry: `src/main.tsx` → `src/features/map/MapApp.tsx` → `usePmtilesMap` + `MapView`.
 
-Layer groups toggled in the UI (`MapLayerGroup`): `roads`, `boundaries`, `facilities`, `responseCoverage`.
+Layer groups toggled in the UI (`MapLayerGroup`): `roads`, `boundaries`, `facilities`, `dfesStations`, `responseCoverage`, `fireResponseCoverage`.
 
 | Concern | Where |
 | --- | --- |
 | Map init, PMTiles protocol, layer paint, visibility | `src/features/map/usePmtilesMap.ts` |
 | Chrome: header, legend, layer toggles, status | `src/features/map/MapView.tsx` |
-| Police points: decode PMTiles, cluster on a GeoJSON source | `src/features/map/policeFacilities.ts` |
+| Police and DFES points: decode PMTiles, cluster on a GeoJSON source | `src/features/map/policeFacilities.ts` |
 | Click hit-testing and popups | `src/features/map/featureHitTest.ts`, `featurePopup.ts` |
 | Attribute names the tiles must keep | `src/features/map/roadAttributes.ts` |
 | Global styles | `src/styles/global.css` |
 
-Police facilities are loaded from PMTiles into a clustered GeoJSON source rather than rendered as a vector tile layer. Roads, LGA boundaries, and response coverage stay as vector PMTiles sources.
+Police facilities and DFES stations are loaded from PMTiles into clustered GeoJSON sources rather than rendered as vector tile layers. Roads, LGA boundaries, and police and fire response coverage stay as vector PMTiles sources.
 
 If you change which GeoJSON properties are written into tiles, update the matching `tippecanoe` `-y` flags in the notebooks. The unit tests will fail if those attributes drift from `roadAttributes.ts`.

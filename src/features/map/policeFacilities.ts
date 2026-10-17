@@ -2,6 +2,7 @@ import { VectorTile } from '@mapbox/vector-tile';
 import type { Feature, Point } from 'geojson';
 import type {
     CircleLayerSpecification,
+    ExpressionSpecification,
     GeoJSONSource,
     GeoJSONSourceSpecification,
     Map as MapLibreMap,
@@ -11,6 +12,30 @@ import type { Header, PMTiles } from 'pmtiles';
 import { PbfReader } from 'pbf';
 
 type FacilityArchiveBounds = Pick<Header, 'maxZoom' | 'minLon' | 'minLat' | 'maxLon' | 'maxLat'>;
+
+/** Shapefile field kept in the police PMTiles. */
+export const POLICE_FACILITY_TYPE_ATTRIBUTE = 'DESCRIPTIO';
+
+/** Mixed clusters use a navy that is not one of the facility colours. */
+export const POLICE_FACILITY_CLUSTER_COLOR = '#0A1F44';
+export const POLICE_FACILITY_FALLBACK_COLOR = POLICE_FACILITY_CLUSTER_COLOR;
+
+export const POLICE_FACILITY_TYPES = [
+    { type: 'Police Station', color: '#0033A1' },
+    { type: 'District Office', color: '#039BE5' },
+    { type: 'Multi Functional Police Facility', color: '#00695C' },
+    { type: 'Multi-Jurisdictional Police Facility', color: '#5E35B1' },
+    { type: 'Police Headquarters', color: '#6D4C41' },
+] as const;
+
+export function getPoliceFacilityColorExpression(): ExpressionSpecification {
+    return [
+        'match',
+        ['get', POLICE_FACILITY_TYPE_ATTRIBUTE],
+        ...POLICE_FACILITY_TYPES.flatMap(facility => [facility.type, facility.color]),
+        POLICE_FACILITY_FALLBACK_COLOR,
+    ] as unknown as ExpressionSpecification;
+}
 
 export interface TileRange {
     minX: number;
@@ -50,7 +75,14 @@ export function getPoliceFacilityClusterLayerIds(layerPrefix: string) {
     };
 }
 
-export function getPoliceFacilityClusterLayers(sourceId: string, layerPrefix: string) {
+export function getPoliceFacilityClusterLayers(
+    sourceId: string,
+    layerPrefix: string,
+    colors?: {
+        cluster?: string;
+        unclustered?: string | ExpressionSpecification;
+    },
+) {
     const layerIds = getPoliceFacilityClusterLayerIds(layerPrefix);
     const cluster: CircleLayerSpecification = {
         id: layerIds.cluster,
@@ -58,7 +90,7 @@ export function getPoliceFacilityClusterLayers(sourceId: string, layerPrefix: st
         source: sourceId,
         filter: ['has', 'point_count'],
         paint: {
-            'circle-color': '#0033A1',
+            'circle-color': colors?.cluster ?? '#0033A1',
             'circle-radius': ['step', ['get', 'point_count'], 10, 10, 15, 25, 18, 50, 22],
             'circle-stroke-width': 1,
             'circle-stroke-color': '#ffffff',
@@ -82,7 +114,7 @@ export function getPoliceFacilityClusterLayers(sourceId: string, layerPrefix: st
         source: sourceId,
         filter: ['!', ['has', 'point_count']],
         paint: {
-            'circle-color': '#0033A1',
+            'circle-color': colors?.unclustered ?? '#0033A1',
             'circle-radius': 5,
             'circle-stroke-width': 1,
             'circle-stroke-color': '#ffffff',

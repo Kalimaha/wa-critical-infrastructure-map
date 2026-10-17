@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
     applyLayerGroupVisibility,
     DEFAULT_LAYER_VISIBILITY,
+    DFES_RESPONSE_COVERAGE_PMTILES_FILE,
+    getDfesResponseCoveragePmtilesUrl,
     getPoliceResponseCoveragePmtilesUrl,
     getRoadNetworkColor,
     getRoadNetworkColorExpression,
@@ -16,7 +18,9 @@ describe('default layer visibility', () => {
             roads: true,
             boundaries: true,
             facilities: true,
+            dfesStations: true,
             responseCoverage: false,
+            fireResponseCoverage: false,
         });
     });
 });
@@ -38,6 +42,22 @@ describe('police response coverage tiles', () => {
     it('keeps the configured origin when building the coverage URL', () => {
         expect(getPoliceResponseCoveragePmtilesUrl('/pmtiles')).toBe(
             '/pmtiles/Police_Response_Coverage_r5.pmtiles',
+        );
+    });
+});
+
+describe('DFES response coverage tiles', () => {
+    it('loads the fire response coverage archive from the configured origin', () => {
+        expect(DFES_RESPONSE_COVERAGE_PMTILES_FILE).toBe('DFES_Response_Coverage.pmtiles');
+
+        const url = getDfesResponseCoveragePmtilesUrl(
+            'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com',
+        );
+        expect(url).toBe(
+            'https://wa-critical-infrastructure-map.s3.ap-southeast-2.amazonaws.com/DFES_Response_Coverage.pmtiles',
+        );
+        expect(getDfesResponseCoveragePmtilesUrl('/pmtiles')).toBe(
+            '/pmtiles/DFES_Response_Coverage.pmtiles',
         );
     });
 });

@@ -1,3 +1,79 @@
+:root {
+    color-scheme: light;
+    --map-canvas: #f2efe9;
+    --panel-bg: #fff;
+    --panel-bg-translucent: rgb(255 255 255 / 90%);
+    --border: #d6d9d5;
+    --text: #242424;
+    --heading: #18352e;
+    --muted: #3d4a46;
+    --chevron: #5b6762;
+    --link: #0b6e4f;
+    --accent: #007f73;
+    --empty: #6b6b6b;
+    --popup-border: #e5e8e5;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        color-scheme: dark;
+        --map-canvas: #1c2421;
+        --panel-bg: #24302b;
+        --panel-bg-translucent: rgb(36 48 43 / 92%);
+        --border: #3d4f48;
+        --text: #e7eeea;
+        --heading: #d7ebe3;
+        --muted: #c5d2cc;
+        --chevron: #aebdb6;
+        --link: #8fd0b0;
+        --accent: #4ec7b6;
+        --empty: #aebdb6;
+        --popup-border: #3d4f48;
+    }
+
+    .maplibregl-ctrl-group {
+        background: var(--panel-bg);
+    }
+
+    .maplibregl-ctrl-group button + button {
+        border-top-color: var(--border);
+    }
+
+    .maplibregl-ctrl button .maplibregl-ctrl-icon {
+        filter: invert(1);
+    }
+
+    .maplibregl-ctrl-attrib,
+    .maplibregl-ctrl-scale {
+        background-color: var(--panel-bg-translucent);
+        color: var(--muted);
+        border-color: var(--border);
+    }
+
+    .maplibregl-popup-content {
+        background: var(--panel-bg);
+        color: var(--text);
+    }
+
+    .maplibregl-popup-anchor-top .maplibregl-popup-tip {
+        border-bottom-color: var(--panel-bg);
+    }
+
+    .maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+    .maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+    .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+        border-top-color: var(--panel-bg);
+    }
+
+    .maplibregl-popup-anchor-left .maplibregl-popup-tip {
+        border-right-color: var(--panel-bg);
+    }
+
+    .maplibregl-popup-anchor-right .maplibregl-popup-tip {
+        border-left-color: var(--panel-bg);
+    }
+}
+
 html,
 body,
 #root {
@@ -8,6 +84,8 @@ body,
 
 body {
     overflow: hidden;
+    background: var(--map-canvas);
+    color: var(--text);
 }
 
 .map-app > .row {
@@ -26,26 +104,26 @@ body {
     display: flex;
     min-width: 0;
     min-height: 0;
-    border-top: 1px solid #d6d9d5;
-    background: #fff;
+    border-top: 1px solid var(--border);
+    background: var(--panel-bg);
 }
 
 @media (min-width: 768px) {
     .map-panel--right {
         border-top: 0;
-        border-left: 1px solid #d6d9d5;
+        border-left: 1px solid var(--border);
     }
 }
 
 .map-header {
     padding: 12px 16px;
-    border-bottom: 1px solid #d6d9d5;
-    background: #fff;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel-bg);
 }
 
 .map-header__title {
     margin: 0;
-    color: #18352e;
+    color: var(--heading);
     font-size: 1.125rem;
     font-weight: 650;
     line-height: 1.25;
@@ -53,14 +131,14 @@ body {
 
 .map-attribution {
     padding: 8px 16px;
-    border-top: 1px solid #d6d9d5;
-    background: #fff;
-    color: #3d4a46;
+    border-top: 1px solid var(--border);
+    background: var(--panel-bg);
+    color: var(--muted);
     font: 12px/1.4 system-ui, sans-serif;
 }
 
 .map-attribution a {
-    color: #0b6e4f;
+    color: var(--link);
     font-weight: 650;
 }
 
@@ -88,7 +166,7 @@ body {
     max-width: min(320px, calc(100% - 20px));
     padding: 6px 10px;
     border-radius: 4px;
-    background: #fff;
+    background: var(--panel-bg);
     box-shadow: 0 1px 4px rgb(0 0 0 / 30%);
     font: 12px/1.4 system-ui, sans-serif;
 }
@@ -102,11 +180,11 @@ body {
     max-width: calc(100% - 20px);
     margin: 0;
     padding: 8px 10px 8px 14px;
-    border: 1px solid #d6d9d5;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    background: rgb(255 255 255 / 90%);
+    background: var(--panel-bg-translucent);
     box-shadow: 0 1px 4px rgb(0 0 0 / 25%);
-    color: #242424;
+    color: var(--text);
     font: 12px/1.4 system-ui, sans-serif;
     backdrop-filter: blur(2px);
 }
@@ -134,7 +212,7 @@ body {
 .map-panel__chevron {
     flex-shrink: 0;
     font-size: 10px;
-    color: #5b6762;
+    color: var(--chevron);
     transition: transform 0.15s ease;
 }
 
@@ -156,11 +234,11 @@ body {
     min-width: 180px;
     max-width: min(260px, calc(100% - 24px));
     padding: 8px 10px;
-    border: 1px solid #d6d9d5;
+    border: 1px solid var(--border);
     border-radius: 4px;
-    background: rgb(255 255 255 / 90%);
+    background: var(--panel-bg-translucent);
     box-shadow: 0 1px 4px rgb(0 0 0 / 25%);
-    color: #242424;
+    color: var(--text);
     font: 12px/1.4 system-ui, sans-serif;
     backdrop-filter: blur(2px);
 }
@@ -182,7 +260,7 @@ body {
 
 .map-legend__empty {
     margin: 0;
-    color: #6b6b6b;
+    color: var(--empty);
     font-style: italic;
 }
 
@@ -230,7 +308,7 @@ body {
 .map-layer-control__separator {
     margin: 6px 0;
     border: 0;
-    border-top: 1px solid #d6d9d5;
+    border-top: 1px solid var(--border);
     opacity: 1;
 }
 
@@ -238,7 +316,7 @@ body {
     margin: 0 0 2px;
     font-size: 11px;
     font-weight: 700;
-    color: #5b6762;
+    color: var(--chevron);
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
@@ -247,7 +325,7 @@ body {
     width: 15px;
     height: 15px;
     margin: 0;
-    accent-color: #007f73;
+    accent-color: var(--accent);
 }
 
 .map-info {
@@ -256,7 +334,7 @@ body {
     align-items: stretch;
     width: 100%;
     margin: 0;
-    color: #242424;
+    color: var(--text);
     font: 12px/1.4 system-ui, sans-serif;
 }
 
@@ -319,13 +397,13 @@ body {
     .map-info__body {
         width: 320px;
         height: 100%;
-        border-right: 1px solid #d6d9d5;
+        border-right: 1px solid var(--border);
     }
 }
 
 .map-info__section {
     margin: 0;
-    border-bottom: 1px solid #d6d9d5;
+    border-bottom: 1px solid var(--border);
 }
 
 .map-info__section:last-child {
@@ -362,7 +440,7 @@ body {
 }
 
 .map-info__section a {
-    color: #0b6e4f;
+    color: var(--link);
     font-weight: 650;
 }
 
@@ -376,7 +454,7 @@ body {
 .feature-popup em {
     display: block;
     margin-bottom: 8px;
-    color: #18352e;
+    color: var(--heading);
     font-style: normal;
     font-weight: 700;
 }
@@ -389,7 +467,7 @@ body {
 
 .feature-popup td {
     padding: 5px 8px 5px 0;
-    border-bottom: 1px solid #e5e8e5;
+    border-bottom: 1px solid var(--popup-border);
     vertical-align: top;
     overflow-wrap: anywhere;
 }

@@ -301,6 +301,26 @@ export const MapLayers: Story = {
     },
 };
 
+export const Appearance: Story = {
+    render: () => <MapView mapContainer={null} status="Ready" loading={false} />,
+    play: async ({ canvasElement }) => {
+        const header = canvasElement.querySelector('.map-header') as HTMLElement;
+        const styles = [...document.styleSheets].flatMap(sheet => {
+            try {
+                return [...sheet.cssRules];
+            } catch {
+                return [];
+            }
+        });
+        const darkRule = styles.find(rule => rule instanceof CSSMediaRule && rule.conditionText.includes('prefers-color-scheme: dark'));
+
+        await expect(getComputedStyle(header).backgroundColor).toBe('rgb(255, 255, 255)');
+        await expect(getComputedStyle(document.documentElement).getPropertyValue('--map-canvas').trim()).toBe('#f2efe9');
+        await expect(darkRule?.cssText).toContain('--map-canvas: #1c2421');
+        await expect(darkRule?.cssText).toContain('--panel-bg: #24302b');
+    },
+};
+
 export const Info: Story = {
     render: () => <MapView mapContainer={null} status="Ready" loading={false} />,
     play: async ({ canvasElement }) => {

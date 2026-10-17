@@ -172,7 +172,7 @@ export const Ready: Story = {
         await expect(responseCoverage.checked).toBe(false);
         const fireResponseCoverage = canvas.getByRole('checkbox', { name: 'Fire Response Coverage' }) as HTMLInputElement;
         await expect(fireResponseCoverage.checked).toBe(false);
-        await expect(canvas.getByLabelText('Road network legend')).toBeTruthy();
+        await expect(canvas.getByLabelText('Map legend')).toBeTruthy();
         await waitFor(() => {
             const status = canvas.queryByRole('status');
             if (!status) return;
@@ -268,7 +268,7 @@ export const MapLayers: Story = {
 
         await expect(control.textContent).toContain('Layers');
         await expect(control.open).toBe(true);
-        const legend = canvas.getByLabelText('Road network legend');
+        const legend = canvas.getByLabelText('Map legend');
         await userEvent.click(within(legend).getByText('Legend'));
         await expect((legend as HTMLDetailsElement).open).toBe(true);
         await expect(control.open).toBe(false);
@@ -379,13 +379,55 @@ export const Info: Story = {
     },
 };
 
-export const Legend: Story = {
-    render: () => <MapView mapContainer={null} status="Vector layers ready" loading={false} />,
+export const DefaultLayerVisibility: Story = {
+    render: () => (
+        <MapView
+            mapContainer={null}
+            status="Vector layers ready"
+            loading={false}
+            onLayerVisibilityChange={() => {}}
+        />
+    ),
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const tools = canvasElement.querySelector('.map-tools') as HTMLDetailsElement;
         await userEvent.click(within(tools).getByText('Map'));
-        const legend = canvas.getByLabelText('Road network legend') as HTMLDetailsElement;
+        const checked = (name: string) => (canvas.getByRole('checkbox', { name }) as HTMLInputElement).checked;
+
+        await expect(checked('Roads')).toBe(true);
+        await expect(checked('LGA Boundaries')).toBe(true);
+        await expect(checked('Police Stations')).toBe(true);
+        await expect(checked('DFES Stations')).toBe(true);
+        await expect(checked('Police Response Coverage')).toBe(false);
+        await expect(checked('Fire Response Coverage')).toBe(false);
+
+        const legend = canvas.getByLabelText('Map legend');
+        await expect(legend.querySelectorAll('.map-legend__list')).toHaveLength(4);
+        await expect(within(legend).queryByText(/Response Coverage/)).toBeNull();
+    },
+};
+
+export const Legend: Story = {
+    render: () => (
+        <MapView
+            mapContainer={null}
+            status="Vector layers ready"
+            loading={false}
+            layerVisibility={{
+                roads: true,
+                boundaries: true,
+                facilities: true,
+                dfesStations: true,
+                responseCoverage: true,
+                fireResponseCoverage: true,
+            }}
+        />
+    ),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const tools = canvasElement.querySelector('.map-tools') as HTMLDetailsElement;
+        await userEvent.click(within(tools).getByText('Map'));
+        const legend = canvas.getByLabelText('Map legend') as HTMLDetailsElement;
         const entries = within(legend).getAllByRole('listitem');
 
         await expect(within(legend).getByText('Legend')).toBeTruthy();

@@ -31,5 +31,5 @@ Those cells may still appear in a full rectangular AOI export as `unreachable`; 
 ## Guardrails
 
 - Do not overwrite the landed M6 S3 artifact unless a full recompute is intentionally scheduled.
-- UI layer label is **Response coverage**; layer stays off by default until the user enables it.
+- UI layer labels are **Police Response Coverage** and **Fire Response Coverage**; both stay off by default until the user enables them.
 - Do not run statewide / full-pilot recompute in R3; that is R4+/R5. Perth AOI prefer-reachable gate recompute is local-only.

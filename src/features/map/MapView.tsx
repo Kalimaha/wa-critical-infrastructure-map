@@ -2,7 +2,7 @@ import type { Ref, SyntheticEvent } from 'react';
 import { Fragment, useState } from 'react';
 import { DFES_STATION_TYPES } from './dfesStations';
 import { POLICE_FACILITY_TYPES } from './policeFacilities';
-import { ROAD_NETWORK_STYLES, type MapLayerGroup, type MapLayerVisibility } from './usePmtilesMap';
+import { DEFAULT_LAYER_VISIBILITY, ROAD_NETWORK_STYLES, type MapLayerGroup, type MapLayerVisibility } from './usePmtilesMap';
 
 export interface MapViewProps {
     mapContainer?: Ref<HTMLDivElement> | null;
@@ -64,7 +64,9 @@ function MapView({
     const [infoOpen, setInfoOpen] = useState(false);
     const [aboutOpen, setAboutOpen] = useState(false);
     const [sourcesOpen, setSourcesOpen] = useState(false);
-    const visibleLegendGroups = LEGEND_GROUP_ORDER.filter(group => layerVisibility?.[group] ?? true);
+    const visibleLegendGroups = LEGEND_GROUP_ORDER.filter(
+        group => layerVisibility?.[group] ?? DEFAULT_LAYER_VISIBILITY[group],
+    );
 
     function handleToolsClick(event: SyntheticEvent) {
         event.preventDefault();
@@ -162,7 +164,7 @@ function MapView({
                                     <label>
                                         <input
                                             type="checkbox"
-                                            checked={layerVisibility?.roads ?? true}
+                                            checked={layerVisibility?.roads ?? DEFAULT_LAYER_VISIBILITY.roads}
                                             onChange={event => onLayerVisibilityChange('roads', event.currentTarget.checked)}
                                         />
                                         Roads
@@ -170,7 +172,7 @@ function MapView({
                                     <label>
                                         <input
                                             type="checkbox"
-                                            checked={layerVisibility?.boundaries ?? true}
+                                            checked={layerVisibility?.boundaries ?? DEFAULT_LAYER_VISIBILITY.boundaries}
                                             onChange={event => onLayerVisibilityChange('boundaries', event.currentTarget.checked)}
                                         />
                                         LGA Boundaries
@@ -178,7 +180,7 @@ function MapView({
                                     <label>
                                         <input
                                             type="checkbox"
-                                            checked={layerVisibility?.facilities ?? true}
+                                            checked={layerVisibility?.facilities ?? DEFAULT_LAYER_VISIBILITY.facilities}
                                             onChange={event => onLayerVisibilityChange('facilities', event.currentTarget.checked)}
                                         />
                                         Police Stations
@@ -186,7 +188,7 @@ function MapView({
                                     <label>
                                         <input
                                             type="checkbox"
-                                            checked={layerVisibility?.dfesStations ?? true}
+                                            checked={layerVisibility?.dfesStations ?? DEFAULT_LAYER_VISIBILITY.dfesStations}
                                             onChange={event => onLayerVisibilityChange('dfesStations', event.currentTarget.checked)}
                                         />
                                         DFES Stations
@@ -196,7 +198,7 @@ function MapView({
                                     <label>
                                         <input
                                             type="checkbox"
-                                            checked={layerVisibility?.responseCoverage ?? true}
+                                            checked={layerVisibility?.responseCoverage ?? DEFAULT_LAYER_VISIBILITY.responseCoverage}
                                             onChange={event => onLayerVisibilityChange('responseCoverage', event.currentTarget.checked)}
                                         />
                                         Police Response Coverage
@@ -204,7 +206,7 @@ function MapView({
                                     <label>
                                         <input
                                             type="checkbox"
-                                            checked={layerVisibility?.fireResponseCoverage ?? false}
+                                            checked={layerVisibility?.fireResponseCoverage ?? DEFAULT_LAYER_VISIBILITY.fireResponseCoverage}
                                             onChange={event => onLayerVisibilityChange('fireResponseCoverage', event.currentTarget.checked)}
                                         />
                                         Fire Response Coverage
@@ -213,7 +215,7 @@ function MapView({
                             )}
                             <details
                                 className="map-tools__section map-legend"
-                                aria-label="Road network legend"
+                                aria-label="Map legend"
                                 open={legendOpen}
                             >
                                 <summary

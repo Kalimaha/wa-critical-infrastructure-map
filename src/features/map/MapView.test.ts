@@ -183,6 +183,17 @@ describe('map layer control', () => {
         expect(checkboxes.map(checkbox => checkbox.checked)).toEqual([true, false, true, true, false, false]);
     });
 
+    it('uses default visibility when the visibility prop is omitted', () => {
+        const container = renderMapView({
+            status: 'Ready',
+            loading: false,
+            onLayerVisibilityChange: vi.fn(),
+        });
+        const checkboxes = [...container.querySelectorAll<HTMLInputElement>('.map-layer-control input')];
+
+        expect(checkboxes.map(checkbox => checkbox.checked)).toEqual([true, true, true, true, false, false]);
+    });
+
     it('separates processed layers under their own title', () => {
         const container = renderMapView({
             status: 'Ready',
@@ -247,16 +258,16 @@ describe('data attribution', () => {
 });
 
 describe('map legend', () => {
-    it('shows road classes, boundaries, facilities, and response coverage', () => {
+    it('shows the default legend groups when visibility is omitted', () => {
         const container = renderMapView({ status: 'Ready', loading: false });
-        const legend = container.querySelector('[aria-label="Road network legend"]') as HTMLDetailsElement | null;
+        const legend = container.querySelector('[aria-label="Map legend"]') as HTMLDetailsElement | null;
         const entries = [...container.querySelectorAll('.map-legend__item')]
             .map(entry => entry.textContent?.trim());
 
         expect(legend?.querySelector('.map-legend__title')?.textContent).toContain('Legend');
         expect(legend?.open).toBe(false);
-        expect(container.querySelectorAll('.map-legend__separator')).toHaveLength(5);
-        expect(container.querySelectorAll('.map-legend__list')).toHaveLength(6);
+        expect(container.querySelectorAll('.map-legend__separator')).toHaveLength(3);
+        expect(container.querySelectorAll('.map-legend__list')).toHaveLength(4);
         expect(entries).toEqual([
             'crossover',
             'local road',
@@ -278,23 +289,14 @@ describe('map legend', () => {
             'SESU — State Emergency Service',
             'VMRS — Volunteer Marine Rescue',
             'DFES — DFES offices and support',
-            'Police Response Coverage: under 5 min',
-            'Police Response Coverage: 5–10 min',
-            'Police Response Coverage: 10–15 min',
-            'Police Response Coverage: over 15 min',
-            'Police Response Coverage: unreachable',
-            'Fire Response Coverage: under 5 min',
-            'Fire Response Coverage: 5–10 min',
-            'Fire Response Coverage: 10–15 min',
-            'Fire Response Coverage: over 15 min',
-            'Fire Response Coverage: unreachable',
         ]);
+        expect(entries.some(entry => entry?.includes('Response Coverage'))).toBe(false);
         expect(legend?.querySelector('.map-legend__swatch--boundary')).not.toBeNull();
-        expect(legend?.querySelector('.map-legend__swatch--response-green')).not.toBeNull();
-        expect(legend?.querySelector('.map-legend__swatch--response-yellow')).not.toBeNull();
-        expect(legend?.querySelector('.map-legend__swatch--response-orange')).not.toBeNull();
-        expect(legend?.querySelector('.map-legend__swatch--response-red')).not.toBeNull();
-        expect(legend?.querySelector('.map-legend__swatch--response-unreachable')).not.toBeNull();
+        expect(legend?.querySelector('.map-legend__swatch--response-green')).toBeNull();
+        expect(legend?.querySelector('.map-legend__swatch--response-yellow')).toBeNull();
+        expect(legend?.querySelector('.map-legend__swatch--response-orange')).toBeNull();
+        expect(legend?.querySelector('.map-legend__swatch--response-red')).toBeNull();
+        expect(legend?.querySelector('.map-legend__swatch--response-unreachable')).toBeNull();
     });
 
     it('only shows entries for visible layers', () => {

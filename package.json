@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run typecheck && vite build",
-    "deploy": "bash scripts/install-aws-cli.sh && aws s3 sync dist/ s3://wa-critical-infrastructure-map/dist/ --region ap-southeast-2 --delete && bash scripts/upload-pmtiles.sh",
+    "deploy": "bash scripts/install-aws-cli.sh && aws s3 sync dist/ s3://wa-critical-infrastructure-map/dist/ --region ap-southeast-2 --delete",
     "deploy:tiles": "bash scripts/install-aws-cli.sh && bash scripts/upload-pmtiles.sh",
     "deploy:prod": "npm run build && npm run deploy",
     "preview": "vite preview",

@@ -24,6 +24,76 @@ afterEach(() => {
     containers.splice(0).forEach(container => container.remove());
 });
 
+describe('app layout', () => {
+    it('keeps the map in the center panel and the info accordion in the right panel', () => {
+        const container = renderMapView({
+            status: 'Ready',
+            loading: false,
+            layerVisibility: {
+                roads: true,
+                boundaries: true,
+                facilities: true,
+                dfesStations: true,
+                responseCoverage: false,
+                fireResponseCoverage: false,
+            },
+            onLayerVisibilityChange: vi.fn(),
+        });
+        const app = container.querySelector('.map-app');
+        const row = app?.querySelector(':scope > .row');
+        const center = container.querySelector('.map-panel--center');
+        const right = container.querySelector('.map-panel--right');
+
+        expect(app?.classList.contains('container-fluid')).toBe(true);
+        expect(row?.className).toContain('flex-column');
+        expect(row?.className).toContain('flex-md-row');
+        expect(app?.querySelector(':scope > .map-header')).toBeTruthy();
+        expect(app?.querySelector(':scope > .map-attribution')).toBeTruthy();
+        expect(center?.classList.contains('col-md')).toBe(true);
+        expect(center?.className).toContain('order-1');
+        expect(center?.className).toContain('order-md-2');
+        expect(center?.querySelector('.map-viewer__canvas')).toBeTruthy();
+        expect(center?.querySelector('.map-legend')).toBeTruthy();
+        expect(center?.querySelector('.map-layer-control')).toBeTruthy();
+        expect(right?.classList.contains('col-md-auto')).toBe(true);
+        expect(right?.className).toContain('order-3');
+        expect(right?.className).toContain('order-md-3');
+        expect(right?.querySelector('.map-info')).toBeTruthy();
+        expect(row?.contains(center ?? null)).toBe(true);
+        expect(row?.contains(right ?? null)).toBe(true);
+        expect(center?.contains(right)).toBe(false);
+    });
+});
+
+describe('info panel', () => {
+    it('starts collapsed and opens About and Data Sources one at a time', () => {
+        const container = renderMapView({ status: 'Ready', loading: false });
+        const panel = container.querySelector('.map-info') as HTMLDetailsElement;
+        const sections = () => [...panel.querySelectorAll<HTMLDetailsElement>('.map-info__section')];
+
+        expect(panel.open).toBe(false);
+        expect(panel.querySelector('.map-info__title-text')?.textContent).toBe('ℹ️ Info');
+
+        act(() => panel.querySelector('summary')?.click());
+        expect(panel.open).toBe(true);
+        expect(sections().map(section => section.querySelector('summary')?.textContent?.trim())).toEqual([
+            'About',
+            'Data Sources',
+        ]);
+        expect(sections().every(section => !section.open)).toBe(true);
+
+        act(() => sections()[0].querySelector('summary')?.click());
+        expect(sections()[0].open).toBe(true);
+        expect(sections()[0].textContent).toContain('study map');
+        expect(sections()[1].open).toBe(false);
+
+        act(() => sections()[1].querySelector('summary')?.click());
+        expect(sections()[0].open).toBe(false);
+        expect(sections()[1].open).toBe(true);
+        expect(sections()[1].textContent).toContain('DFES stations (DFES-023)');
+    });
+});
+
 describe('map layer control', () => {
     const visibility: MapLayerVisibility = {
         roads: true,

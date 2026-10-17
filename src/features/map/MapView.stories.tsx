@@ -301,6 +301,38 @@ export const MapLayers: Story = {
     },
 };
 
+export const Info: Story = {
+    render: () => <MapView mapContainer={null} status="Ready" loading={false} />,
+    play: async ({ canvasElement }) => {
+        const panel = canvasElement.querySelector('.map-info') as HTMLDetailsElement;
+        const center = canvasElement.querySelector('.map-panel--center');
+        const sections = () => [...panel.querySelectorAll<HTMLDetailsElement>('.map-info__section')];
+
+        await expect(center?.querySelector('.map-legend')).toBeTruthy();
+        await expect(center?.querySelector('.map-layer-control')).toBeNull();
+        await expect(center?.contains(panel)).toBe(false);
+        await expect(panel.open).toBe(false);
+        await expect(panel.querySelector('.map-info__title-text')?.textContent).toBe('ℹ️ Info');
+
+        await userEvent.click(within(panel).getByText('ℹ️ Info'));
+        await expect(panel.open).toBe(true);
+        await expect(sections().map(section => section.querySelector('summary')?.textContent?.trim())).toEqual([
+            'About',
+            'Data Sources',
+        ]);
+
+        await userEvent.click(within(sections()[0]).getByText('About'));
+        await expect(sections()[0].open).toBe(true);
+        await expect(sections()[0].textContent).toContain('study map');
+        await expect(sections()[1].open).toBe(false);
+
+        await userEvent.click(within(sections()[1]).getByText('Data Sources'));
+        await expect(sections()[0].open).toBe(false);
+        await expect(sections()[1].open).toBe(true);
+        await expect(sections()[1].textContent).toContain('DFES stations (DFES-023)');
+    },
+};
+
 export const Legend: Story = {
     render: () => <MapView mapContainer={null} status="Vector layers ready" loading={false} />,
     play: async ({ canvasElement }) => {

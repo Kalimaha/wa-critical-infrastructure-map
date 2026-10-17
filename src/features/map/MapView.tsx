@@ -66,8 +66,18 @@ function MapView({
     const [sourcesOpen, setSourcesOpen] = useState(false);
     const visibleLegendGroups = LEGEND_GROUP_ORDER.filter(group => layerVisibility?.[group] ?? true);
 
-    function handleToolsToggle(event: SyntheticEvent<HTMLDetailsElement>) {
-        setToolsOpen(event.currentTarget.open);
+    function handleToolsClick(event: SyntheticEvent) {
+        event.preventDefault();
+        const open = !toolsOpen;
+        setToolsOpen(open);
+        if (!open || layersOpen || legendOpen) {
+            return;
+        }
+        if (onLayerVisibilityChange) {
+            setLayersOpen(true);
+            return;
+        }
+        setLegendOpen(true);
     }
 
     function handleToolSectionClick(section: 'layers' | 'legend', event: SyntheticEvent) {
@@ -87,8 +97,13 @@ function MapView({
         }
     }
 
-    function handleInfoToggle(event: SyntheticEvent<HTMLDetailsElement>) {
-        setInfoOpen(event.currentTarget.open);
+    function handleInfoClick(event: SyntheticEvent) {
+        event.preventDefault();
+        const open = !infoOpen;
+        setInfoOpen(open);
+        if (open && !aboutOpen && !sourcesOpen) {
+            setAboutOpen(true);
+        }
     }
 
     function handleSectionClick(section: 'about' | 'sources', event: SyntheticEvent) {
@@ -122,10 +137,9 @@ function MapView({
                         className="map-tools"
                         aria-label="Map"
                         open={toolsOpen}
-                        onToggle={handleToolsToggle}
                     >
-                        <summary className="map-tools__title">
-                            <span className="map-tools__title-text">🗺️ Map</span>
+                        <summary className="map-tools__title" onClick={handleToolsClick}>
+                            <span className="map-tools__title-text">Map</span>
                             <i className="fa-solid fa-chevron-down map-panel__chevron map-tools__chevron" aria-hidden="true" />
                         </summary>
                         <div className="map-tools__body">
@@ -250,10 +264,9 @@ function MapView({
                         className="map-info"
                         aria-label="Info"
                         open={infoOpen}
-                        onToggle={handleInfoToggle}
                     >
-                        <summary className="map-info__title">
-                            <span className="map-info__title-text">ℹ️ Info</span>
+                        <summary className="map-info__title" onClick={handleInfoClick}>
+                            <span className="map-info__title-text">Info</span>
                             <i className="fa-solid fa-chevron-down map-panel__chevron map-info__chevron" aria-hidden="true" />
                         </summary>
                         <div className="map-info__body">

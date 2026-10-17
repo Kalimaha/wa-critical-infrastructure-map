@@ -53,7 +53,7 @@ describe('app layout', () => {
         expect(left?.classList.contains('col-md-auto')).toBe(true);
         expect(left?.className).toContain('order-2');
         expect(left?.className).toContain('order-md-1');
-        expect(left?.querySelector('.map-tools__title-text')?.textContent).toBe('🗺️ Map');
+        expect(left?.querySelector('.map-tools__title-text')?.textContent).toBe('Map');
         expect(left?.querySelector('.map-legend')).toBeTruthy();
         expect(left?.querySelector('.map-layer-control')).toBeTruthy();
         expect(center?.classList.contains('col-md')).toBe(true);
@@ -81,7 +81,7 @@ describe('info panel', () => {
         const sections = () => [...panel.querySelectorAll<HTMLDetailsElement>('.map-info__section')];
 
         expect(panel.open).toBe(false);
-        expect(panel.querySelector('.map-info__title-text')?.textContent).toBe('ℹ️ Info');
+        expect(panel.querySelector('.map-info__title-text')?.textContent).toBe('Info');
 
         act(() => panel.querySelector('summary')?.click());
         expect(panel.open).toBe(true);
@@ -89,9 +89,6 @@ describe('info panel', () => {
             'About',
             'Data Sources',
         ]);
-        expect(sections().every(section => !section.open)).toBe(true);
-
-        act(() => sections()[0].querySelector('summary')?.click());
         expect(sections()[0].open).toBe(true);
         expect(sections()[0].textContent).toContain('study map');
         expect(sections()[1].open).toBe(false);
@@ -100,6 +97,12 @@ describe('info panel', () => {
         expect(sections()[0].open).toBe(false);
         expect(sections()[1].open).toBe(true);
         expect(sections()[1].textContent).toContain('DFES stations (DFES-023)');
+
+        act(() => panel.querySelector('summary')?.click());
+        act(() => panel.querySelector('summary')?.click());
+        expect(panel.open).toBe(true);
+        expect(sections()[0].open).toBe(false);
+        expect(sections()[1].open).toBe(true);
     });
 });
 
@@ -122,7 +125,7 @@ describe('map tools panel', () => {
         const sections = () => [...panel.querySelectorAll<HTMLDetailsElement>('.map-tools__section')];
 
         expect(panel.open).toBe(false);
-        expect(panel.querySelector('.map-tools__title-text')?.textContent).toBe('🗺️ Map');
+        expect(panel.querySelector('.map-tools__title-text')?.textContent).toBe('Map');
 
         act(() => panel.querySelector('summary')?.click());
         expect(panel.open).toBe(true);
@@ -130,9 +133,6 @@ describe('map tools panel', () => {
             'Layers',
             'Legend',
         ]);
-        expect(sections().every(section => !section.open)).toBe(true);
-
-        act(() => sections()[0].querySelector('summary')?.click());
         expect(sections()[0].open).toBe(true);
         expect(sections()[1].open).toBe(false);
 
@@ -140,6 +140,12 @@ describe('map tools panel', () => {
         expect(sections()[0].open).toBe(false);
         expect(sections()[1].open).toBe(true);
         expect(sections()[1].textContent).toContain('LGA Boundaries');
+
+        act(() => panel.querySelector('summary')?.click());
+        act(() => panel.querySelector('summary')?.click());
+        expect(panel.open).toBe(true);
+        expect(sections()[0].open).toBe(false);
+        expect(sections()[1].open).toBe(true);
     });
 });
 
@@ -382,6 +388,17 @@ describe('map legend', () => {
         })));
 
         expect(container.querySelector('.map-legend__empty')?.textContent).toBe('No layers visible');
+    });
+
+    it('opens the legend when the map panel is opened without a layer list', () => {
+        const container = renderMapView({ status: 'Ready', loading: false });
+        const panel = container.querySelector('.map-tools') as HTMLDetailsElement;
+        const legend = container.querySelector('.map-legend') as HTMLDetailsElement;
+
+        act(() => panel.querySelector('summary')?.click());
+
+        expect(panel.open).toBe(true);
+        expect(legend.open).toBe(true);
     });
 
     it('collapses and expands when the title is clicked', () => {

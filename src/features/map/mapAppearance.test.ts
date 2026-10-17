@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { inflateSync } from 'node:zlib';
 import { resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -68,4 +69,77 @@ describe('home screen install', () => {
         expect(iconLicense).toContain('Badge of Western Australia.svg');
         expect(iconLicense).toContain('CC BY-SA 4.0');
     });
+
+    it('uses the Western Australia badge, a black swan on a yellow disc', () => {
+        const icon = readPng(resolve(process.cwd(), 'public/apple-touch-icon.png'));
+        expect(icon.width).toBe(180);
+        expect(icon.height).toBe(180);
+
+        let yellow = 0;
+        let black = 0;
+        for (const [red, green, blue, alpha] of icon.pixels) {
+            if (alpha === 0) continue;
+            if (red > 180 && green > 140 && blue < 80) yellow += 1;
+            else if (red < 40 && green < 40 && blue < 40) black += 1;
+        }
+        expect(yellow).toBeGreaterThan(black);
+        expect(black).toBeGreaterThan(5_000);
+    });
 });
+
+function readPng(path: string) {
+    const data = readFileSync(path);
+    let offset = 8;
+    let width = 0;
+    let height = 0;
+    const compressed: Buffer[] = [];
+    while (offset < data.length) {
+        const length = data.readUInt32BE(offset);
+        const tag = data.toString('ascii', offset + 4, offset + 8);
+        const chunk = data.subarray(offset + 8, offset + 8 + length);
+        offset += 12 + length;
+        if (tag === 'IHDR') {
+            width = chunk.readUInt32BE(0);
+            height = chunk.readUInt32BE(4);
+        } else if (tag === 'IDAT') {
+            compressed.push(chunk);
+        } else if (tag === 'IEND') {
+            break;
+        }
+    }
+    const raw = inflateSync(Buffer.concat(compressed));
+    const stride = width * 4;
+    const pixels: number[][] = [];
+    let cursor = 0;
+    let previous = new Uint8Array(stride);
+    for (let y = 0; y < height; y += 1) {
+        const filter = raw[cursor];
+        cursor += 1;
+        const row = Uint8Array.from(raw.subarray(cursor, cursor + stride));
+        cursor += stride;
+        for (let x = 0; x < stride; x += 1) {
+            const left = x >= 4 ? row[x - 4] : 0;
+            const up = previous[x];
+            const upLeft = x >= 4 ? previous[x - 4] : 0;
+            if (filter === 1) row[x] = (row[x] + left) & 255;
+            else if (filter === 2) row[x] = (row[x] + up) & 255;
+            else if (filter === 3) row[x] = (row[x] + Math.floor((left + up) / 2)) & 255;
+            else if (filter === 4) {
+                const estimate = left + up - upLeft;
+                const leftDistance = Math.abs(estimate - left);
+                const upDistance = Math.abs(estimate - up);
+                const upLeftDistance = Math.abs(estimate - upLeft);
+                const predicted = leftDistance <= upDistance && leftDistance <= upLeftDistance
+                    ? left
+                    : upDistance <= upLeftDistance ? up : upLeft;
+                row[x] = (row[x] + predicted) & 255;
+            }
+        }
+        previous = row;
+        for (let x = 0; x < width; x += 1) {
+            const index = x * 4;
+            pixels.push([row[index], row[index + 1], row[index + 2], row[index + 3]]);
+        }
+    }
+    return { width, height, pixels };
+}

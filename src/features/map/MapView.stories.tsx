@@ -159,6 +159,8 @@ export const Ready: Story = {
             'DFES_Response_Coverage.pmtiles',
         );
         await expect(canvas.getByRole('heading', { name: /WA Critical Infrastructure Map/ })).toBeTruthy();
+        await userEvent.click(canvas.getByText('🗺️ Map'));
+        await userEvent.click(canvas.getByText('Layers'));
         await expect(canvas.getByRole('group', { name: 'Layers' })).toBeTruthy();
         await expect(canvas.getByRole('checkbox', { name: 'Roads' })).toBeTruthy();
         const dfesStations = canvas.getByRole('checkbox', { name: 'DFES Stations' }) as HTMLInputElement;
@@ -251,7 +253,11 @@ export const MapLayers: Story = {
     render: () => <LayerControlsPreview />,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
+        const tools = canvasElement.querySelector('.map-tools') as HTMLDetailsElement;
+        await userEvent.click(within(tools).getByText('🗺️ Map'));
+        await expect(tools.open).toBe(true);
         const control = canvas.getByRole('group', { name: 'Layers' }) as HTMLDetailsElement;
+        await userEvent.click(within(control).getByText('Layers'));
         const roads = canvas.getByRole('checkbox', { name: 'Roads' }) as HTMLInputElement;
         const boundaries = canvas.getByRole('checkbox', { name: 'LGA Boundaries' }) as HTMLInputElement;
         const facilities = canvas.getByRole('checkbox', { name: 'Police Stations' }) as HTMLInputElement;
@@ -261,6 +267,14 @@ export const MapLayers: Story = {
 
         await expect(control.textContent).toContain('Layers');
         await expect(control.open).toBe(true);
+        const legend = canvas.getByLabelText('Road network legend');
+        await userEvent.click(within(legend).getByText('Legend'));
+        await expect((legend as HTMLDetailsElement).open).toBe(true);
+        await expect(control.open).toBe(false);
+        await expect(legend.querySelectorAll('.map-legend__separator').length).toBe(3);
+        await userEvent.click(within(control).getByText('Layers'));
+        await expect(control.open).toBe(true);
+        await expect((legend as HTMLDetailsElement).open).toBe(false);
         await expect(roads.checked).toBe(true);
         await expect(boundaries.checked).toBe(true);
         await expect(facilities.checked).toBe(true);
@@ -281,23 +295,28 @@ export const MapLayers: Story = {
         await userEvent.click(fireResponseCoverage);
         await expect(fireResponseCoverage.checked).toBe(true);
 
-        const legend = canvas.getByLabelText('Road network legend');
+        await userEvent.click(within(legend).getByText('Legend'));
         const legendText = () => within(legend).getAllByRole('listitem').map(entry => entry.textContent?.trim());
         await expect(legendText().some(entry => entry?.startsWith('Fire Response Coverage'))).toBe(true);
         await expect(legendText().some(entry => entry?.startsWith('BFB'))).toBe(false);
 
+        await userEvent.click(within(control).getByText('Layers'));
         await userEvent.click(facilities);
         await userEvent.click(dfesStations);
+        await userEvent.click(within(legend).getByText('Legend'));
         await expect(legendText()).toContain('Police Station');
         await expect(legendText()).toContain('BFB — Bush Fire Brigade');
+        await userEvent.click(within(control).getByText('Layers'));
         await userEvent.click(dfesStations);
+        await userEvent.click(within(legend).getByText('Legend'));
         await expect(legendText().some(entry => entry?.startsWith('BFB'))).toBe(false);
         await expect(legendText()).toContain('Police Station');
 
-        await userEvent.click(canvas.getByText('Layers'));
-        await expect(control.open).toBe(false);
-        await userEvent.click(canvas.getByText('Layers'));
+        await userEvent.click(within(control).getByText('Layers'));
         await expect(control.open).toBe(true);
+        await expect((legend as HTMLDetailsElement).open).toBe(false);
+        await userEvent.click(within(control).getByText('Layers'));
+        await expect(control.open).toBe(false);
     },
 };
 
@@ -328,8 +347,10 @@ export const Info: Story = {
         const center = canvasElement.querySelector('.map-panel--center');
         const sections = () => [...panel.querySelectorAll<HTMLDetailsElement>('.map-info__section')];
 
-        await expect(center?.querySelector('.map-legend')).toBeTruthy();
+        const left = canvasElement.querySelector('.map-panel--left');
+        await expect(center?.querySelector('.map-legend')).toBeNull();
         await expect(center?.querySelector('.map-layer-control')).toBeNull();
+        await expect(left?.querySelector('.map-legend')).toBeTruthy();
         await expect(center?.contains(panel)).toBe(false);
         await expect(panel.open).toBe(false);
         await expect(panel.querySelector('.map-info__title-text')?.textContent).toBe('ℹ️ Info');
@@ -357,11 +378,16 @@ export const Legend: Story = {
     render: () => <MapView mapContainer={null} status="Vector layers ready" loading={false} />,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
+        const tools = canvasElement.querySelector('.map-tools') as HTMLDetailsElement;
+        await userEvent.click(within(tools).getByText('🗺️ Map'));
         const legend = canvas.getByLabelText('Road network legend') as HTMLDetailsElement;
+        await userEvent.click(within(legend).getByText('Legend'));
         const entries = within(legend).getAllByRole('listitem');
 
         await expect(within(legend).getByText('Legend')).toBeTruthy();
         await expect(legend.open).toBe(true);
+        await expect(legend.querySelectorAll('.map-legend__list')).toHaveLength(6);
+        await expect(legend.querySelectorAll('.map-legend__separator')).toHaveLength(5);
         await expect(entries.map(entry => entry.textContent?.trim())).toEqual([
             'crossover',
             'local road',
@@ -414,6 +440,8 @@ export const PoliceFacilitiesClusters: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         // Same as Ready: assert facilities control without waiting on PMTiles.
+        await userEvent.click(canvas.getByText('🗺️ Map'));
+        await userEvent.click(canvas.getByText('Layers'));
         await expect(canvas.getByRole('checkbox', { name: 'Police Stations' })).toBeTruthy();
         await expect(canvas.getByRole('group', { name: 'Layers' })).toBeTruthy();
         await expect(canvas.getByRole('heading', { name: /WA Critical Infrastructure Map/ })).toBeTruthy();

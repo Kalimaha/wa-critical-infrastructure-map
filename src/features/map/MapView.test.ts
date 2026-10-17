@@ -41,6 +41,7 @@ describe('app layout', () => {
         });
         const app = container.querySelector('.map-app');
         const row = app?.querySelector(':scope > .row');
+        const left = container.querySelector('.map-panel--left');
         const center = container.querySelector('.map-panel--center');
         const right = container.querySelector('.map-panel--right');
 
@@ -49,18 +50,26 @@ describe('app layout', () => {
         expect(row?.className).toContain('flex-md-row');
         expect(app?.querySelector(':scope > .map-header')).toBeTruthy();
         expect(app?.querySelector(':scope > .map-attribution')).toBeTruthy();
+        expect(left?.classList.contains('col-md-auto')).toBe(true);
+        expect(left?.className).toContain('order-2');
+        expect(left?.className).toContain('order-md-1');
+        expect(left?.querySelector('.map-tools__title-text')?.textContent).toBe('🗺️ Map');
+        expect(left?.querySelector('.map-legend')).toBeTruthy();
+        expect(left?.querySelector('.map-layer-control')).toBeTruthy();
         expect(center?.classList.contains('col-md')).toBe(true);
         expect(center?.className).toContain('order-1');
         expect(center?.className).toContain('order-md-2');
         expect(center?.querySelector('.map-viewer__canvas')).toBeTruthy();
-        expect(center?.querySelector('.map-legend')).toBeTruthy();
-        expect(center?.querySelector('.map-layer-control')).toBeTruthy();
+        expect(center?.querySelector('.map-legend')).toBeNull();
+        expect(center?.querySelector('.map-layer-control')).toBeNull();
         expect(right?.classList.contains('col-md-auto')).toBe(true);
         expect(right?.className).toContain('order-3');
         expect(right?.className).toContain('order-md-3');
         expect(right?.querySelector('.map-info')).toBeTruthy();
+        expect(row?.contains(left ?? null)).toBe(true);
         expect(row?.contains(center ?? null)).toBe(true);
         expect(row?.contains(right ?? null)).toBe(true);
+        expect(center?.contains(left)).toBe(false);
         expect(center?.contains(right)).toBe(false);
     });
 });
@@ -94,6 +103,46 @@ describe('info panel', () => {
     });
 });
 
+describe('map tools panel', () => {
+    it('starts collapsed and opens Layers and Legend one at a time', () => {
+        const container = renderMapView({
+            status: 'Ready',
+            loading: false,
+            layerVisibility: {
+                roads: true,
+                boundaries: true,
+                facilities: true,
+                dfesStations: true,
+                responseCoverage: false,
+                fireResponseCoverage: false,
+            },
+            onLayerVisibilityChange: vi.fn(),
+        });
+        const panel = container.querySelector('.map-tools') as HTMLDetailsElement;
+        const sections = () => [...panel.querySelectorAll<HTMLDetailsElement>('.map-tools__section')];
+
+        expect(panel.open).toBe(false);
+        expect(panel.querySelector('.map-tools__title-text')?.textContent).toBe('🗺️ Map');
+
+        act(() => panel.querySelector('summary')?.click());
+        expect(panel.open).toBe(true);
+        expect(sections().map(section => section.querySelector('summary')?.textContent?.trim())).toEqual([
+            'Layers',
+            'Legend',
+        ]);
+        expect(sections().every(section => !section.open)).toBe(true);
+
+        act(() => sections()[0].querySelector('summary')?.click());
+        expect(sections()[0].open).toBe(true);
+        expect(sections()[1].open).toBe(false);
+
+        act(() => sections()[1].querySelector('summary')?.click());
+        expect(sections()[0].open).toBe(false);
+        expect(sections()[1].open).toBe(true);
+        expect(sections()[1].textContent).toContain('LGA Boundaries');
+    });
+});
+
 describe('map layer control', () => {
     const visibility: MapLayerVisibility = {
         roads: true,
@@ -115,7 +164,7 @@ describe('map layer control', () => {
         const checkboxes = [...container.querySelectorAll<HTMLInputElement>('.map-layer-control input')];
 
         expect(control?.textContent).toContain('Layers');
-        expect((control as HTMLDetailsElement | null)?.open).toBe(true);
+        expect((control as HTMLDetailsElement | null)?.open).toBe(false);
         expect(checkboxes).toHaveLength(6);
         expect(checkboxes.map(checkbox => checkbox.parentElement?.textContent?.trim())).toEqual([
             'Roads',
@@ -154,11 +203,11 @@ describe('map layer control', () => {
         const control = container.querySelector('.map-layer-control') as HTMLDetailsElement;
         const summary = control.querySelector('summary');
 
-        expect(control.open).toBe(true);
-        act(() => summary?.click());
         expect(control.open).toBe(false);
         act(() => summary?.click());
         expect(control.open).toBe(true);
+        act(() => summary?.click());
+        expect(control.open).toBe(false);
     });
 
     it('notifies the parent when response coverage is toggled', () => {
@@ -199,7 +248,9 @@ describe('map legend', () => {
             .map(entry => entry.textContent?.trim());
 
         expect(legend?.querySelector('.map-legend__title')?.textContent).toContain('Legend');
-        expect(legend?.open).toBe(true);
+        expect(legend?.open).toBe(false);
+        expect(container.querySelectorAll('.map-legend__separator')).toHaveLength(5);
+        expect(container.querySelectorAll('.map-legend__list')).toHaveLength(6);
         expect(entries).toEqual([
             'crossover',
             'local road',
@@ -265,6 +316,8 @@ describe('map legend', () => {
             'Multi-Jurisdictional Police Facility',
             'Police Headquarters',
         ]);
+        expect(container.querySelectorAll('.map-legend__separator')).toHaveLength(1);
+        expect(container.querySelector('.map-legend__list')?.nextElementSibling?.className).toBe('map-legend__separator');
     });
 
     it('updates when a layer is toggled', () => {
@@ -286,6 +339,7 @@ describe('map legend', () => {
             .filter(entry => entry.textContent?.startsWith('Police Response Coverage'));
 
         expect(responseEntries()).toHaveLength(5);
+        expect(container.querySelector('.map-legend__separator')).toBeNull();
 
         act(() => roots[0].render(createElement(MapView, {
             ...props,
@@ -335,10 +389,10 @@ describe('map legend', () => {
         const legend = container.querySelector('.map-legend') as HTMLDetailsElement;
         const summary = legend.querySelector('summary');
 
-        expect(legend.open).toBe(true);
-        act(() => summary?.click());
         expect(legend.open).toBe(false);
         act(() => summary?.click());
         expect(legend.open).toBe(true);
+        act(() => summary?.click());
+        expect(legend.open).toBe(false);
     });
 });

@@ -1,5 +1,5 @@
 import type { Ref, SyntheticEvent } from 'react';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { DFES_STATION_TYPES } from './dfesStations';
 import { POLICE_FACILITY_TYPES } from './policeFacilities';
 import { ROAD_NETWORK_STYLES, type MapLayerGroup, type MapLayerVisibility } from './usePmtilesMap';
@@ -51,14 +51,6 @@ const LEGEND_GROUP_ORDER: MapLayerGroup[] = [
     'fireResponseCoverage',
 ];
 
-/** Open on desktop; collapsed on narrow viewports so the map stays readable on mobile. */
-function getInitialPanelOpen() {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-        return true;
-    }
-    return window.matchMedia('(min-width: 768px)').matches;
-}
-
 function MapView({
     mapContainer,
     status,
@@ -66,21 +58,33 @@ function MapView({
     layerVisibility,
     onLayerVisibilityChange,
 }: MapViewProps) {
-    const [legendOpen, setLegendOpen] = useState(getInitialPanelOpen);
-    const [layersOpen, setLayersOpen] = useState(getInitialPanelOpen);
+    const [toolsOpen, setToolsOpen] = useState(false);
+    const [layersOpen, setLayersOpen] = useState(false);
+    const [legendOpen, setLegendOpen] = useState(false);
     const [infoOpen, setInfoOpen] = useState(false);
     const [aboutOpen, setAboutOpen] = useState(false);
     const [sourcesOpen, setSourcesOpen] = useState(false);
-    const legendEntries = LEGEND_GROUP_ORDER
-        .filter(group => layerVisibility?.[group] ?? true)
-        .flatMap(group => LEGEND_ENTRIES[group]);
+    const visibleLegendGroups = LEGEND_GROUP_ORDER.filter(group => layerVisibility?.[group] ?? true);
 
-    function handleLegendToggle(event: SyntheticEvent<HTMLDetailsElement>) {
-        setLegendOpen(event.currentTarget.open);
+    function handleToolsToggle(event: SyntheticEvent<HTMLDetailsElement>) {
+        setToolsOpen(event.currentTarget.open);
     }
 
-    function handleLayersToggle(event: SyntheticEvent<HTMLDetailsElement>) {
-        setLayersOpen(event.currentTarget.open);
+    function handleToolSectionClick(section: 'layers' | 'legend', event: SyntheticEvent) {
+        event.preventDefault();
+        if (section === 'layers') {
+            const next = !layersOpen;
+            setLayersOpen(next);
+            if (next) {
+                setLegendOpen(false);
+            }
+            return;
+        }
+        const next = !legendOpen;
+        setLegendOpen(next);
+        if (next) {
+            setLayersOpen(false);
+        }
     }
 
     function handleInfoToggle(event: SyntheticEvent<HTMLDetailsElement>) {
@@ -113,7 +117,124 @@ function MapView({
                 </h1>
             </header>
             <div className="row g-0 flex-column flex-md-row flex-nowrap flex-grow-1">
-            <main className="col-12 col-md order-1 order-md-2 map-panel map-panel--center flex-grow-1 p-0">
+                <aside className="col-12 col-md-auto order-2 order-md-1 map-panel map-panel--left flex-shrink-0 p-0">
+                    <details
+                        className="map-tools"
+                        aria-label="Map"
+                        open={toolsOpen}
+                        onToggle={handleToolsToggle}
+                    >
+                        <summary className="map-tools__title">
+                            <span className="map-tools__title-text">🗺️ Map</span>
+                            <i className="fa-solid fa-chevron-down map-panel__chevron map-tools__chevron" aria-hidden="true" />
+                        </summary>
+                        <div className="map-tools__body">
+                            {onLayerVisibilityChange && (
+                                <details
+                                    className="map-tools__section map-layer-control"
+                                    role="group"
+                                    aria-labelledby="map-layers-title"
+                                    aria-disabled={loading}
+                                    open={layersOpen}
+                                >
+                                    <summary
+                                        id="map-layers-title"
+                                        className="map-tools__section-title"
+                                        onClick={event => handleToolSectionClick('layers', event)}
+                                    >
+                                        Layers
+                                        <i className="fa-solid fa-chevron-down map-panel__chevron" aria-hidden="true" />
+                                    </summary>
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            checked={layerVisibility?.roads ?? true}
+                                            onChange={event => onLayerVisibilityChange('roads', event.currentTarget.checked)}
+                                        />
+                                        Roads
+                                    </label>
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            checked={layerVisibility?.boundaries ?? true}
+                                            onChange={event => onLayerVisibilityChange('boundaries', event.currentTarget.checked)}
+                                        />
+                                        LGA Boundaries
+                                    </label>
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            checked={layerVisibility?.facilities ?? true}
+                                            onChange={event => onLayerVisibilityChange('facilities', event.currentTarget.checked)}
+                                        />
+                                        Police Stations
+                                    </label>
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            checked={layerVisibility?.dfesStations ?? true}
+                                            onChange={event => onLayerVisibilityChange('dfesStations', event.currentTarget.checked)}
+                                        />
+                                        DFES Stations
+                                    </label>
+                                    <hr className="map-layer-control__separator" />
+                                    <p className="map-layer-control__section-title">Processed Layers</p>
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            checked={layerVisibility?.responseCoverage ?? true}
+                                            onChange={event => onLayerVisibilityChange('responseCoverage', event.currentTarget.checked)}
+                                        />
+                                        Police Response Coverage
+                                    </label>
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            checked={layerVisibility?.fireResponseCoverage ?? false}
+                                            onChange={event => onLayerVisibilityChange('fireResponseCoverage', event.currentTarget.checked)}
+                                        />
+                                        Fire Response Coverage
+                                    </label>
+                                </details>
+                            )}
+                            <details
+                                className="map-tools__section map-legend"
+                                aria-label="Road network legend"
+                                open={legendOpen}
+                            >
+                                <summary
+                                    className="map-tools__section-title map-legend__title"
+                                    onClick={event => handleToolSectionClick('legend', event)}
+                                >
+                                    Legend
+                                    <i className="fa-solid fa-chevron-down map-panel__chevron" aria-hidden="true" />
+                                </summary>
+                                {visibleLegendGroups.length > 0 ? visibleLegendGroups.map((group, index) => (
+                                    <Fragment key={group}>
+                                        {index > 0 && <hr className="map-legend__separator" />}
+                                        <ul className="map-legend__list">
+                                            {LEGEND_ENTRIES[group].map(({ label, color, swatchModifier }) => (
+                                                <li key={label} className="map-legend__item">
+                                                    <span
+                                                        className={swatchModifier
+                                                            ? `map-legend__swatch map-legend__swatch--${swatchModifier}`
+                                                            : 'map-legend__swatch'}
+                                                        style={color ? { backgroundColor: color } : undefined}
+                                                        aria-hidden="true"
+                                                    />
+                                                    <span>{label}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </Fragment>
+                                )) : (
+                                    <p className="map-legend__empty">No layers visible</p>
+                                )}
+                            </details>
+                        </div>
+                    </details>
+                </aside>
+                <main className="col-12 col-md order-1 order-md-2 map-panel map-panel--center flex-grow-1 p-0">
                     <div className="map-viewer__column">
                         <div className="map-viewer__canvas" ref={mapContainer} />
                     </div>
@@ -123,101 +244,7 @@ function MapView({
                             <span>{status}</span>
                         </div>
                     )}
-                    <details
-                        className="map-legend"
-                        aria-label="Road network legend"
-                        open={legendOpen}
-                        onToggle={handleLegendToggle}
-                    >
-                        <summary className="map-legend__title">
-                            Legend
-                            <i className="fa-solid fa-chevron-down map-panel__chevron" aria-hidden="true" />
-                        </summary>
-                        {legendEntries.length > 0 ? (
-                            <ul className="map-legend__list">
-                                {legendEntries.map(({ label, color, swatchModifier }) => (
-                                    <li key={label} className="map-legend__item">
-                                        <span
-                                            className={swatchModifier
-                                                ? `map-legend__swatch map-legend__swatch--${swatchModifier}`
-                                                : 'map-legend__swatch'}
-                                            style={color ? { backgroundColor: color } : undefined}
-                                            aria-hidden="true"
-                                        />
-                                        <span>{label}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p className="map-legend__empty">No layers visible</p>
-                        )}
-                    </details>
-                    {onLayerVisibilityChange && (
-                        <details
-                            className="map-layer-control"
-                            role="group"
-                            aria-labelledby="map-layers-title"
-                            aria-disabled={loading}
-                            open={layersOpen}
-                            onToggle={handleLayersToggle}
-                        >
-                            <summary id="map-layers-title" className="map-layer-control__title">
-                                Layers
-                                <i className="fa-solid fa-chevron-down map-panel__chevron" aria-hidden="true" />
-                            </summary>
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    checked={layerVisibility?.roads ?? true}
-                                    onChange={event => onLayerVisibilityChange('roads', event.currentTarget.checked)}
-                                />
-                                Roads
-                            </label>
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    checked={layerVisibility?.boundaries ?? true}
-                                    onChange={event => onLayerVisibilityChange('boundaries', event.currentTarget.checked)}
-                                />
-                                LGA Boundaries
-                            </label>
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    checked={layerVisibility?.facilities ?? true}
-                                    onChange={event => onLayerVisibilityChange('facilities', event.currentTarget.checked)}
-                                />
-                                Police Stations
-                            </label>
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    checked={layerVisibility?.dfesStations ?? true}
-                                    onChange={event => onLayerVisibilityChange('dfesStations', event.currentTarget.checked)}
-                                />
-                                DFES Stations
-                            </label>
-                            <hr className="map-layer-control__separator" />
-                            <p className="map-layer-control__section-title">Processed Layers</p>
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    checked={layerVisibility?.responseCoverage ?? true}
-                                    onChange={event => onLayerVisibilityChange('responseCoverage', event.currentTarget.checked)}
-                                />
-                                Police Response Coverage
-                            </label>
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    checked={layerVisibility?.fireResponseCoverage ?? false}
-                                    onChange={event => onLayerVisibilityChange('fireResponseCoverage', event.currentTarget.checked)}
-                                />
-                                Fire Response Coverage
-                            </label>
-                        </details>
-                    )}
-            </main>
+                </main>
             <aside className="col-12 col-md-auto order-3 order-md-3 map-panel map-panel--right flex-shrink-0 p-0">
                     <details
                         className="map-info"
